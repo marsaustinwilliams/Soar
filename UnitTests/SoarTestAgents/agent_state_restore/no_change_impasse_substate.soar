@@ -1,0 +1,19 @@
+sp {no-change*substate*elaborate
+   (state <s> ^impasse no-change ^attribute state ^superstate <ss>)
+-->
+   (<s> ^substate-kind no-change)
+   (<ss> ^nc-substate-visible yes)}
+
+sp {no-change*substate*propose*resolve
+   (state <s> ^impasse no-change ^attribute state ^superstate <ss>)
+-->
+   (<s> ^operator <o> +)
+   (<o> ^name resolve-no-change)
+   (<o> ^target-super <ss>)}
+
+sp {no-change*substate*apply*resolve
+   (state <s> ^impasse no-change ^attribute state ^superstate <ss> ^operator <o>)
+   (<o> ^name resolve-no-change)
+-->
+   (<s> ^substate-result stabilized)
+   (<ss> ^no-change-resolution complete)}

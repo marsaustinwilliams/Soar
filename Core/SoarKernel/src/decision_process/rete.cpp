@@ -954,80 +954,102 @@ bool any_i_assertions_or_retractions_ready(agent* thisAgent)
  */
 bool postpone_assertion(agent* thisAgent, production** prod, struct token_struct** tok, wme** w)
 {
-    ms_change* msc = NIL;
-
-
-    /* In Waterfall, we return only assertions that match in the
-    currently active goal */
-
-    if (thisAgent->active_goal)   /* Just do asserts for current goal */
+    while (true)
     {
-        if (thisAgent->FIRING_TYPE == PE_PRODS)
-        {
-            if (! thisAgent->active_goal->id->ms_o_assertions)
-            {
-                return false;
-            }
+        ms_change* msc = NIL;
 
-            msc = thisAgent->active_goal->id->ms_o_assertions;
-            remove_from_dll(thisAgent->ms_o_assertions, msc, next, prev);
-            remove_from_dll(thisAgent->active_goal->id->ms_o_assertions,
-                            msc, next_in_level, prev_in_level);
+        /* In Waterfall, we return only assertions that match in the
+        currently active goal */
+
+        if (thisAgent->active_goal)   /* Just do asserts for current goal */
+        {
+            if (thisAgent->FIRING_TYPE == PE_PRODS)
+            {
+                if (! thisAgent->active_goal->id->ms_o_assertions)
+                {
+                    return false;
+                }
+
+                msc = thisAgent->active_goal->id->ms_o_assertions;
+                remove_from_dll(thisAgent->ms_o_assertions, msc, next, prev);
+                remove_from_dll(thisAgent->active_goal->id->ms_o_assertions,
+                                msc, next_in_level, prev_in_level);
+
+            }
+            else
+            {
+                /* IE PRODS */
+                if (! thisAgent->active_goal->id->ms_i_assertions)
+                {
+                    return false;
+                }
+
+                msc = thisAgent->active_goal->id->ms_i_assertions;
+                remove_from_dll(thisAgent->ms_i_assertions, msc, next, prev);
+                remove_from_dll(thisAgent->active_goal->id->ms_i_assertions,
+                                msc, next_in_level, prev_in_level);
+            }
 
         }
         else
         {
-            /* IE PRODS */
-            if (! thisAgent->active_goal->id->ms_i_assertions)
+
+            /* If there is not an active goal, then there should not be any
+            assertions.  If there are, then we generate and error message
+            and abort. */
+
+            if ((thisAgent->ms_i_assertions) ||
+                    (thisAgent->ms_o_assertions))
             {
-                return false;
+
+                // Commented out 11/2007
+                // laird: I would like us to remove that error message that happens
+                // in Obscurebot. It just freaks people out and we have yet to see an error in Soar because of it.
+
+                //char msg[BUFFER_MSG_SIZE];
+                //strncpy(msg,"\nrete.c: Error: No active goal, but assertions are on the assertion list.", BUFFER_MSG_SIZE);
+                //msg[BUFFER_MSG_SIZE - 1] = 0; /* ensure null termination */
+                //abort_with_fatal_error(thisAgent, msg);
+
             }
 
-            msc = thisAgent->active_goal->id->ms_i_assertions;
-            remove_from_dll(thisAgent->ms_i_assertions, msc, next, prev);
-            remove_from_dll(thisAgent->active_goal->id->ms_i_assertions,
-                            msc, next_in_level, prev_in_level);
+            return false; /* if we are in an initiazation and there are no
+                          assertions, just retrurn false to terminate
+                          the procedure. */
+
         }
 
-    }
-    else
-    {
-
-        /* If there is not an active goal, then there should not be any
-        assertions.  If there are, then we generate and error message
-        and abort. */
-
-        if ((thisAgent->ms_i_assertions) ||
-                (thisAgent->ms_o_assertions))
+        production* queued_prod = (msc->p_node != NIL) ? msc->p_node->b.p.prod : NIL;
+        bool duplicate_existing_instantiation = false;
+        if (queued_prod)
         {
-
-            // Commented out 11/2007
-            // laird: I would like us to remove that error message that happens
-            // in Obscurebot. It just freaks people out and we have yet to see an error in Soar because of it.
-
-            //char msg[BUFFER_MSG_SIZE];
-            //strncpy(msg,"\nrete.c: Error: No active goal, but assertions are on the assertion list.", BUFFER_MSG_SIZE);
-            //msg[BUFFER_MSG_SIZE - 1] = 0; /* ensure null termination */
-            //abort_with_fatal_error(thisAgent, msg);
-
+            for (instantiation* existing_inst = queued_prod->instantiations; existing_inst != NIL; existing_inst = existing_inst->next)
+            {
+                if ((existing_inst->rete_token == msc->tok) && (existing_inst->rete_wme == msc->w))
+                {
+                    duplicate_existing_instantiation = true;
+                    break;
+                }
+            }
         }
 
-        return false; /* if we are in an initiazation and there are no
-                      assertions, just retrurn false to terminate
-                      the procedure. */
+        if (!msc->p_node || !queued_prod || (queued_prod->p_node != msc->p_node) || duplicate_existing_instantiation)
+        {
+            thisAgent->memoryManager->free_with_pool(MP_ms_change, msc);
+            continue;
+        }
 
+        remove_from_dll(msc->p_node->b.p.tentative_assertions, msc,
+                        next_of_node, prev_of_node);
+        *prod = queued_prod;
+        *tok = msc->tok;
+        *w = msc->w;
+
+        // save the assertion on the postponed list
+        insert_at_head_of_dll(thisAgent->postponed_assertions, msc, next, prev);
+
+        return true;
     }
-
-    remove_from_dll(msc->p_node->b.p.tentative_assertions, msc,
-                    next_of_node, prev_of_node);
-    *prod = msc->p_node->b.p.prod;
-    *tok = msc->tok;
-    *w = msc->w;
-
-    // save the assertion on the postponed list
-    insert_at_head_of_dll(thisAgent->postponed_assertions, msc, next, prev);
-
-    return true;
 }
 
 void consume_last_postponed_assertion(agent* thisAgent)
@@ -1703,7 +1725,6 @@ void remove_wme_from_rete(agent* thisAgent, wme* w)
     }
 }
 
-/* --- Decrements reference count, deallocates alpha memory if unused. --- */
 void remove_ref_to_alpha_mem(agent* thisAgent, alpha_mem* am)
 {
     hash_table* ht;
@@ -7760,6 +7781,7 @@ void reteload_node_and_children(agent* thisAgent, rete_node* parent, FILE* f)
 
         case P_BNODE:
             thisAgent->memoryManager->allocate_with_pool(MP_production, &prod);
+            *prod = {};
             prod->reference_count = 1;
             prod->firing_count = 0;
             prod->trace_firings = false;
@@ -7881,11 +7903,9 @@ void reteload_node_and_children(agent* thisAgent, rete_node* parent, FILE* f)
   false if any error occurred.
 ---------------------------------------------------------------------- */
 
-bool save_rete_net(agent* thisAgent, FILE* dest_file, bool use_rete_net_64)
+bool save_rete_net(agent* thisAgent, FILE* dest_file, bool use_rete_net_64, bool include_justifications)
 {
-
-    /* --- make sure there are no justifications present --- */
-    if (thisAgent->all_productions_of_type[JUSTIFICATION_PRODUCTION_TYPE])
+    if (!include_justifications && thisAgent->all_productions_of_type[JUSTIFICATION_PRODUCTION_TYPE])
     {
         thisAgent->outputManager->printa_sf(thisAgent, "Internal error: save_rete_net() with justifications present.\n");
         return false;
@@ -7919,12 +7939,14 @@ bool load_rete_net(agent* thisAgent, FILE* source_file)
     if (thisAgent->all_wmes_in_rete)
     {
         thisAgent->outputManager->printa_sf(thisAgent, "Internal error: load_rete_net() called with nonempty WM.\n");
+            std::fprintf(stderr, "[load_rete_net] nonempty WM: %p\n", (void*)thisAgent->all_wmes_in_rete);
         return false;
     }
     for (i = 0; i < NUM_PRODUCTION_TYPES; i++)
         if (thisAgent->num_productions_of_type[i])
         {
             thisAgent->outputManager->printa_sf(thisAgent, "Internal error: load_rete_net() called with nonempty PM.\n");
+                        std::fprintf(stderr, "[load_rete_net] nonempty PM: type %llu has %llu prods\n", (unsigned long long)i, (unsigned long long)thisAgent->num_productions_of_type[i]);
             return false;
         }
 

@@ -85,4 +85,40 @@
         "editor.defaultFormatter": "ms-python.black-formatter"
     },
     "python.formatting.provider": "none",
+    "chat.tools.terminal.autoApprove": {
+        "/^python3 - <<'PY'\nimport os, pty, select, subprocess, time, re\ncli = '/home/poiso/Projects/Soar/build/Debug/SoarCLI/soar'\ncwd = '/home/poiso/Projects/Soar/build/Debug'\nprompt = 'soar %'\nmaster, slave = pty\\.openpty\\(\\)\nproc = subprocess\\.Popen\\(\\[cli\\], cwd=cwd, stdin=slave, stdout=slave, stderr=slave, close_fds=True, env=\\{\\*\\*os\\.environ, 'LD_LIBRARY_PATH': cwd \\+ '/Core:' \\+ cwd\\}\\)\nos\\.close\\(slave\\)\n\ndef read_until_prompt\\(timeout=20\\):\n    end = time\\.time\\(\\) \\+ timeout\n    chunks = \\[\\]\n    while time\\.time\\(\\) < end:\n        ready, _, _ = select\\.select\\(\\[master\\], \\[\\], \\[\\], max\\(0, end-time\\.time\\(\\)\\)\\)\n        if not ready:\n            break\n        data = os\\.read\\(master, 4096\\)\n        if not data:\n            break\n        chunks\\.append\\(data\\.decode\\(errors='replace'\\)\\)\n        txt = ''\\.join\\(chunks\\)\\.replace\\('\\\\r',''\\)\n        if prompt in txt:\n            return txt\n    return ''\\.join\\(chunks\\)\\.replace\\('\\\\r',''\\)\n\ndef run\\(cmd, timeout=20\\):\n    os\\.write\\(master, \\(cmd\\+'\\\\n'\\)\\.encode\\(\\)\\)\n    out = read_until_prompt\\(timeout\\)\n    print\\(f'>>> \\{cmd\\}\\\\n\\{out\\}\\\\n'\\)\n    return out\n\nprint\\(read_until_prompt\\(\\)\\)\nrun\\('source UnitTests/SoarTestAgents/Chunking/tests/ChunkingTests_All_Test_Types\\.soar'\\)\nrun\\('explain all on'\\)\nrun\\('explain just on'\\)\nrun\\('soar stop-phase apply'\\)\nrun\\('run 1', timeout=20\\)\nrun\\('fc init-superstate'\\)\nrun\\('fc propose\\*top'\\)\nrun\\('fc init-substate'\\)\nrun\\('fc propose\\*test'\\)\nrun\\('fc apply2'\\)\nrun\\('print --stack'\\)\nrun\\('saveKernelState \"tmp_all_test\\.snapshot\\.bin\"'\\)\nrun\\('soar init'\\)\nrun\\('production excise --all'\\)\nrun\\('run 1', timeout=20\\)\nrun\\('loadKernelState \"tmp_all_test\\.snapshot\\.bin\"', timeout=20\\)\nrun\\('run 3', timeout=20\\)\nrun\\('fc init-superstate'\\)\nrun\\('fc propose\\*top'\\)\nrun\\('fc init-substate'\\)\nrun\\('fc propose\\*test'\\)\nrun\\('fc apply2'\\)\nrun\\('print --stack'\\)\nrun\\('print -fcr'\\)\nrun\\('quit', timeout=5\\)\nproc\\.wait\\(timeout=5\\)\nos\\.close\\(master\\)\nPY$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^python3 - <<'PY'\nimport os, pty, select, subprocess, time\ncli = '/home/poiso/Projects/Soar/build/Debug/SoarCLI/soar'\ncwd = '/home/poiso/Projects/Soar/build/Debug'\nprompt = 'soar %'\nmaster, slave = pty\\.openpty\\(\\)\nproc = subprocess\\.Popen\\(\\[cli\\], cwd=cwd, stdin=slave, stdout=slave, stderr=slave, close_fds=True, env=\\{\\*\\*os\\.environ, 'LD_LIBRARY_PATH': cwd \\+ '/Core:' \\+ cwd\\}\\)\nos\\.close\\(slave\\)\n\ndef read_until_prompt\\(timeout=20\\):\n    end = time\\.time\\(\\) \\+ timeout\n    chunks = \\[\\]\n    while time\\.time\\(\\) < end:\n        ready, _, _ = select\\.select\\(\\[master\\], \\[\\], \\[\\], max\\(0, end-time\\.time\\(\\)\\)\\)\n        if not ready:\n            break\n        data = os\\.read\\(master, 4096\\)\n        if not data:\n            break\n        chunks\\.append\\(data\\.decode\\(errors='replace'\\)\\)\n        txt = ''\\.join\\(chunks\\)\\.replace\\('\\\\r',''\\)\n        if prompt in txt:\n            return txt\n    return ''\\.join\\(chunks\\)\\.replace\\('\\\\r',''\\)\n\ndef run\\(cmd, timeout=20\\):\n    os\\.write\\(master, \\(cmd\\+'\\\\n'\\)\\.encode\\(\\)\\)\n    out = read_until_prompt\\(timeout\\)\n    print\\(f'>>> \\{cmd\\}\\\\n\\{out\\}\\\\n'\\)\n    return out\n\nprint\\(read_until_prompt\\(\\)\\)\nrun\\('source UnitTests/SoarTestAgents/Chunking/tests/ChunkingTests_All_Test_Types\\.soar'\\)\nrun\\('explain all on'\\)\nrun\\('explain just on'\\)\nrun\\('run 1'\\)\nrun\\('fc init-superstate'\\)\nrun\\('fc propose\\*top'\\)\nrun\\('fc init-substate'\\)\nrun\\('fc propose\\*test'\\)\nrun\\('fc apply2'\\)\nrun\\('run 3'\\)\nrun\\('fc init-superstate'\\)\nrun\\('fc propose\\*top'\\)\nrun\\('fc init-substate'\\)\nrun\\('fc propose\\*test'\\)\nrun\\('fc apply2'\\)\nrun\\('production matches apply2'\\)\nrun\\('print --stack'\\)\nrun\\('quit', timeout=5\\)\nproc\\.wait\\(timeout=5\\)\nos\\.close\\(master\\)\nPY$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "c++": true,
+        "./UnitTests/test_soar": true,
+        "printf": true,
+        "./SoarCLI/soar": true,
+        "./tmp_sml_repro": true,
+        "awk": true,
+        "ctest": true,
+        "mkdir": true,
+        "set": true,
+        "env": true,
+        "valgrind": true,
+        "java": true,
+        "timeout": true,
+        "make": true,
+        "/^cd /home/poiso/Projects/Soar && python3 scons/scons\\.py --dbg tests -j4 2>&1 \\| tail -40$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^cd /home/poiso/Projects/Soar && python3 scons/scons\\.py UnitTests -j4$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^cd /home/poiso/Projects/Soar && python3 scons/scons\\.py UnitTests -j2 && export LD_LIBRARY_PATH=/home/poiso/Projects/Soar/build/Core:/home/poiso/Projects/Soar/build && out=/tmp/soar_snapshot_sigcheck_strict_waterjughier_step3_baseline_after_revert\\.log && env SOAR_SERIALIZER_SIGNATURE_CHECK=1 SOAR_SERIALIZER_SIGNATURE_STRICT=1 SOAR_SNAPSHOT_STEP_START=3 SOAR_SNAPSHOT_STEP_END=3 timeout 90 \\./build/UnitTests/UnitTests --snapshot-every-step --category FunctionalTests --test \"\\[snapshot\\] testWaterJugHierarchy\" > \"\\$out\" 2>&1; rc=\\$\\?; echo \"RESULT rc=\\$rc log=\\$out\"; rg -n \"SERIALIZER_SIGNATURE\\|ids missing_after_load\\|id_field_value_delta\\|match_delta\\|strict mode enabled\\|Snapshot rebuild failed\\|Completed\\|FAIL\" \"\\$out\" \\| tail -n 320$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    },
 }

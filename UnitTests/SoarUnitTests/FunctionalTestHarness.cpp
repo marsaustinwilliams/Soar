@@ -13,11 +13,94 @@
 #include "symbol_manager.h"
 #include "SoarHelper.hpp"
 
+#include <cstdlib>
+#include <cstring>
+
+namespace
+{
+
+const char* snapshot_stop_phase_from_env()
+{
+    const char* env = std::getenv("SOAR_SNAPSHOT_STOP_PHASE");
+    if (!env || !env[0])
+    {
+        return "apply";
+    }
+
+    if (!std::strcmp(env, "decide") || !std::strcmp(env, "decision"))
+    {
+        /* CLI stop-phase mapping uses "decision" for DECIDE_PHASE. */
+        return "decision";
+    }
+
+    if (!std::strcmp(env, "input") || !std::strcmp(env, "propose") ||
+        !std::strcmp(env, "apply") || !std::strcmp(env, "output"))
+    {
+        return env;
+    }
+
+    return "apply";
+}
+
+}
+
 FunctionalTestHarness::FunctionalTestHarness()
 : haltData(std::bind(&FunctionalTestHarness::haltHandler, this)),
   failedData(std::bind(&FunctionalTestHarness::failedHandler, this)),
   succeededData(std::bind(&FunctionalTestHarness::succeededHandler, this))
 {}
+
+bool FunctionalTestHarness::snapshotRebuildSupported()
+{
+    const std::string category = getCategoryName();
+    return category.find("SMemFunctionalTests") == std::string::npos &&
+           category.find("EpMemFunctionalTests") == std::string::npos;
+}
+
+std::string FunctionalTestHarness::snapshotStemForTest(const std::string& testName)
+{
+    return getCategoryName() + "_" + testName;
+}
+
+std::string FunctionalTestHarness::runDecisionSteps(int decisionCount, const std::string& snapshotStem, sml::smlRunStepSize stepSize)
+{
+    std::string lastResult;
+    for (int step = 0; step < decisionCount && !halted; ++step)
+    {
+        lastResult = agent->RunSelf(1, stepSize);
+        runner->output << std::endl << lastResult << std::endl;
+
+        if (snapshotRebuildSupported() && SoarHelper::should_snapshot_step(step + 1))
+        {
+            const std::string perStepSnapshot = snapshotStem + "_step_" + std::to_string(step + 1);
+            assertTrue_msg("Snapshot rebuild failed for " + perStepSnapshot,
+                           SoarHelper::snapshot_and_restore(agent, perStepSnapshot, &runner->output));
+        }
+    }
+
+    return lastResult;
+}
+
+std::string FunctionalTestHarness::runDecisionStepsUntilHalt(const std::string& snapshotStem, sml::smlRunStepSize stepSize)
+{
+    std::string lastResult;
+    int step = 0;
+    while (!halted)
+    {
+        lastResult = agent->RunSelf(1, stepSize);
+        runner->output << std::endl << lastResult << std::endl;
+        ++step;
+
+        if (snapshotRebuildSupported() && SoarHelper::should_snapshot_step(step))
+        {
+            const std::string perStepSnapshot = snapshotStem + "_step_" + std::to_string(step);
+            assertTrue_msg("Snapshot rebuild failed for " + perStepSnapshot,
+                           SoarHelper::snapshot_and_restore(agent, perStepSnapshot, &runner->output));
+        }
+    }
+
+    return lastResult;
+}
 
 void FunctionalTestHarness::runTestSetup(std::string testName)
 {
@@ -44,7 +127,9 @@ void FunctionalTestHarness::runTestSetup(std::string testName)
     runner->output << "Loaded Productions for " << sourceName << ":" << std::endl;
     runner->output << result << std::endl;
 
-    result = agent->ExecuteCommandLine("soar stop-phase apply");
+    std::string stopPhaseCommand("soar stop-phase ");
+    stopPhaseCommand += snapshot_stop_phase_from_env();
+    result = agent->ExecuteCommandLine(stopPhaseCommand.c_str());
     runner->output << "Set Stop Phase: " << result << std::endl;
 
     SoarHelper::check_learning_override(agent);
@@ -55,14 +140,24 @@ void FunctionalTestHarness::runTestSetup(std::string testName)
 void FunctionalTestHarness::runTestExecute(std::string testName, int expectedDecisions)
 {
     const char* result = nullptr;
+    const std::string snapshotStem = snapshotStemForTest(testName);
 
     if(expectedDecisions >= 0)
     {
-        result = agent->RunSelf(expectedDecisions + 1);
+        runDecisionSteps(expectedDecisions + 1, snapshotStem);
+        result = "";
     }
     else
     {
-        result = agent->RunSelfForever();
+        if (SoarHelper::snapshot_every_step && snapshotRebuildSupported())
+        {
+            SoarHelper::run_self_forever(agent, snapshotStem, &runner->output);
+            result = "";
+        }
+        else
+        {
+            result = agent->RunSelfForever();
+        }
     }
 
     runner->output << std::endl << result << std::endl;
@@ -162,7 +257,10 @@ void FunctionalTestHarness::tearDown(bool caught)
     halt_routine = nullptr;
 
     if (agent != nullptr)
+    {
+        SoarHelper::normalize_after_snapshot_testing(agent, &runner->output);
         kernel->DestroyAgent(agent);
+    }
     
     kernel->Shutdown();
 

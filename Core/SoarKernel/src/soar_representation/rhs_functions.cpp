@@ -36,6 +36,7 @@
  */
 
 #include "rhs_functions.h"
+#include "agent_state_serializer.h"
 
 #include "agent.h"
 #include "decide.h"

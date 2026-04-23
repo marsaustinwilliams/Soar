@@ -18,6 +18,7 @@ typedef struct wme_struct wme;
 
 #include <map>
 #include <list>
+#include <vector>
 
 #include "cli_CommandLineInterface.h"
 #include "sml_SystemListener.h"
@@ -148,6 +149,10 @@ namespace sml
             int GetInterruptCheckRate()
             {
                 return m_InterruptCheckRate;
+            }
+            void SetInterruptCheckRate(int rate)
+            {
+                m_InterruptCheckRate = rate;
             }
             
             /*************************************************************
@@ -337,6 +342,14 @@ namespace sml
             {
                 return m_SuppressSystemStop && !m_RequireSystemStop ;
             }
+            bool IsSystemStopSuppressedRaw()
+            {
+                return m_SuppressSystemStop ;
+            }
+            bool IsSystemStopRequired()
+            {
+                return m_RequireSystemStop ;
+            }
             
             /*************************************************************
             * @brief    Remove any events that this connection was listening to.
@@ -386,6 +399,9 @@ namespace sml
             * @brief    Returns the number of agents.
             *************************************************************/
             int         GetNumberAgents() ;
+            std::vector<AgentSML*> GetAllAgentSML() ;
+            AgentSML* CreateAgentSML(const char* agentName, bool loadUserSettings = true, bool fireCreationEvent = true) ;
+            bool DestroyAgentSML(AgentSML* pAgentSML) ;
             
             /*************************************************************
             * @brief    Delete the agent sml object for this agent.

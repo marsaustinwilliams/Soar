@@ -13,6 +13,11 @@
 #include "sml_ClientAnalyzedXML.h"
 #include "TestHelpers.hpp"
 
+#include <cctype>
+#include <cstdlib>
+#include <cstdio>
+#include <fstream>
+#include <stdexcept>
 #include <sstream>
 
 std::string SoarHelper::ResourceDirectory = "./SoarUnitTests/";
@@ -22,6 +27,319 @@ bool SoarHelper::no_explainer = false;
 bool SoarHelper::save_after_action_report = false;
 bool SoarHelper::save_logs = false;
 bool SoarHelper::no_init_soar = false;
+bool SoarHelper::snapshot_every_step = false;
+
+namespace
+{
+
+std::string run_self_via_command_line(sml::Agent* agent, int count, sml::smlRunStepSize stepSize)
+{
+	std::string stepFlag;
+	switch (stepSize)
+	{
+		case sml::sml_DECIDE:
+			stepFlag = "-d";
+			break;
+		case sml::sml_PHASE:
+			stepFlag = "-p";
+			break;
+		case sml::sml_ELABORATION:
+			stepFlag = "-e";
+			break;
+		case sml::sml_UNTIL_OUTPUT:
+			stepFlag = "-o";
+			break;
+		default:
+			throw std::runtime_error("Unsupported run step size for command-line execution.");
+	}
+
+	const std::string command = "run --self " + stepFlag + " " + std::to_string(count);
+	return agent->ExecuteCommandLine(command.c_str());
+}
+
+bool run_cli_and_require_success(sml::Agent* agent, const char* command, std::ostream* log)
+{
+	const std::string result = agent->ExecuteCommandLine(command);
+	if (log)
+	{
+		*log << "\n>>> " << command << "\n" << result << std::endl;
+	}
+	return agent->GetLastCommandLineResult();
+}
+
+int snapshot_step_range_start()
+{
+	const char* env = std::getenv("SOAR_SNAPSHOT_STEP_START");
+	if (!env || !env[0])
+	{
+		return 1;
+	}
+
+	char* parseEnd = nullptr;
+	long parsed = std::strtol(env, &parseEnd, 10);
+	if ((parseEnd == env) || (parsed < 1))
+	{
+		return 1;
+	}
+
+	return static_cast<int>(parsed);
+}
+
+int snapshot_step_range_end()
+{
+	const char* env = std::getenv("SOAR_SNAPSHOT_STEP_END");
+	if (!env || !env[0])
+	{
+		return -1;
+	}
+
+	char* parseEnd = nullptr;
+	long parsed = std::strtol(env, &parseEnd, 10);
+	if ((parseEnd == env) || (parsed < 1))
+	{
+		return -1;
+	}
+
+	return static_cast<int>(parsed);
+}
+
+}
+
+std::string SoarHelper::sanitizeSnapshotStem(const std::string& snapshotStem)
+{
+	std::string sanitized;
+	sanitized.reserve(snapshotStem.size());
+
+	for (char ch : snapshotStem)
+	{
+		if (std::isalnum(static_cast<unsigned char>(ch)) || ch == '_' || ch == '-')
+		{
+			sanitized.push_back(ch);
+		}
+		else
+		{
+			sanitized.push_back('_');
+		}
+	}
+
+	if (sanitized.empty())
+	{
+		sanitized = "agent_snapshot";
+	}
+
+	return sanitized;
+}
+
+bool SoarHelper::snapshot_and_restore(sml::Agent* agent, const std::string& snapshotStem, std::ostream* log)
+{
+	const std::string filename = sanitizeSnapshotStem(snapshotStem) + ".snapshot.bin";
+	if (!log)
+	{
+		std::remove(filename.c_str());
+	}
+
+	const std::string saveCommand = "saveKernelState \"" + filename + "\"";
+	const std::string saveResult = agent->ExecuteCommandLine(saveCommand.c_str());
+	if (log)
+	{
+		*log << "\n>>> " << saveCommand << "\n" << saveResult << std::endl;
+	}
+	if (!agent->GetLastCommandLineResult())
+	{
+		std::cerr << "[snapshot_and_restore] save failed for " << snapshotStem << std::endl;
+		std::cerr << "[snapshot_and_restore] save output: " << saveResult << std::endl;
+		return false;
+	}
+
+	struct stat fileInfo;
+	if (stat(filename.c_str(), &fileInfo) != 0)
+	{
+		if (log)
+		{
+			*log << "Snapshot file was not created: " << filename << std::endl;
+		}
+		return false;
+	}
+
+	if (log)
+	{
+		const std::string preservedFilename = sanitizeSnapshotStem(snapshotStem) + ".saved.snapshot.bin";
+		std::ifstream src(filename, std::ios::binary);
+		std::ofstream dst(preservedFilename, std::ios::binary | std::ios::trunc);
+		dst << src.rdbuf();
+	}
+
+	for (const char* command : {"soar init", "production excise --all", "run 1"})
+	{
+		if (!run_cli_and_require_success(agent, command, log))
+		{
+			std::cerr << "[snapshot_and_restore] reset command failed for " << snapshotStem
+			          << ": " << command << std::endl;
+			return false;
+		}
+	}
+
+	const std::string loadCommand = "loadKernelState \"" + filename + "\"";
+	const std::string loadResult = agent->ExecuteCommandLine(loadCommand.c_str());
+	if (log)
+	{
+		*log << "\n>>> " << loadCommand << "\n" << loadResult << std::endl;
+	}
+
+	std::remove(filename.c_str());
+
+	const bool cmdResult = agent->GetLastCommandLineResult();
+	if (!cmdResult)
+	{
+		std::cerr << "[snapshot_and_restore] GetLastCommandLineResult=false for " << snapshotStem << std::endl;
+		std::cerr << "[snapshot_and_restore] load output: " << loadResult << std::endl;
+	}
+	return cmdResult;
+}
+
+bool SoarHelper::should_snapshot_step(int stepNumber)
+{
+	if (!snapshot_every_step)
+	{
+		return false;
+	}
+
+	const int rangeStart = snapshot_step_range_start();
+	const int rangeEnd = snapshot_step_range_end();
+	if (stepNumber < rangeStart)
+	{
+		return false;
+	}
+
+	return (rangeEnd < 0) || (stepNumber <= rangeEnd);
+}
+
+std::string SoarHelper::run_self(sml::Agent* agent,
+							 int count,
+							 const std::string& snapshotStem,
+							 std::ostream* log,
+							 sml::smlRunStepSize stepSize)
+{
+	if (!snapshot_every_step)
+	{
+		return agent->RunSelf(count, stepSize);
+	}
+
+	return run_self_with_snapshots(agent, count, snapshotStem, log, stepSize);
+}
+
+std::string SoarHelper::run_self_forever(sml::Agent* agent,
+								 const std::string& snapshotStem,
+								 std::ostream* log,
+								 sml::smlRunStepSize stepSize)
+{
+	if (!snapshot_every_step)
+	{
+		return agent->RunSelfForever();
+	}
+
+	std::string lastResult;
+	for (int step = 0; ; ++step)
+	{
+		lastResult = agent->RunSelf(1, stepSize);
+		if (log)
+		{
+			*log << std::endl << lastResult << std::endl;
+		}
+
+		const std::string stemBase = snapshotStem.empty() ? "run_forever" : snapshotStem;
+		const int stepNumber = step + 1;
+		const std::string perStepSnapshot = stemBase + "_step_" + std::to_string(stepNumber);
+		if (should_snapshot_step(stepNumber) && !snapshot_and_restore(agent, perStepSnapshot, log))
+		{
+			throw std::runtime_error("Snapshot rebuild failed for " + perStepSnapshot);
+		}
+
+		if (agent->GetRunState() == sml::sml_RUNSTATE_HALTED)
+		{
+			break;
+		}
+	}
+
+	return lastResult;
+}
+
+std::string SoarHelper::run_all_agents_forever(sml::Kernel* kernel,
+								   sml::Agent* checkpointAgent,
+								   const std::string& snapshotStem,
+								   std::ostream* log,
+								   sml::smlRunStepSize interleaveStepSize)
+{
+	if (!snapshot_every_step)
+	{
+		return kernel->RunAllAgentsForever(interleaveStepSize);
+	}
+
+	std::string lastResult = kernel->RunAllAgentsForever(interleaveStepSize);
+	if (log)
+	{
+		*log << std::endl << lastResult << std::endl;
+	}
+
+	if (!checkpointAgent)
+	{
+		throw std::runtime_error("Snapshot run requested for RunAllAgentsForever without a checkpoint agent.");
+	}
+
+	const std::string finalSnapshot = snapshotStem.empty() ? "run_all_agents_forever_before_check" : snapshotStem + "_before_check";
+	if (!snapshot_and_restore(checkpointAgent, finalSnapshot, log))
+	{
+		throw std::runtime_error("Snapshot rebuild failed for " + finalSnapshot);
+	}
+
+	return lastResult;
+}
+
+void SoarHelper::normalize_after_snapshot_testing(sml::Agent* agent, std::ostream* log)
+{
+	if (!snapshot_every_step || !agent)
+	{
+		return;
+	}
+
+	for (const char* command : {"soar init", "production excise --all"})
+	{
+		const std::string result = agent->ExecuteCommandLine(command);
+		if (log)
+		{
+			*log << "\n>>> " << command << "\n" << result << std::endl;
+		}
+	}
+}
+
+std::string SoarHelper::run_self_with_snapshots(sml::Agent* agent,
+												int count,
+												const std::string& snapshotStem,
+												std::ostream* log,
+												sml::smlRunStepSize stepSize)
+{
+	std::string lastResult;
+	for (int step = 0; step < count; ++step)
+	{
+		lastResult = run_self_via_command_line(agent, 1, stepSize);
+		if (log)
+		{
+			*log << std::endl << lastResult << std::endl;
+		}
+
+		const int stepNumber = step + 1;
+		if (should_snapshot_step(stepNumber))
+		{
+			const std::string perStepSnapshot = snapshotStem + "_step_" + std::to_string(stepNumber);
+			if (!snapshot_and_restore(agent, perStepSnapshot, log))
+			{
+				throw std::runtime_error("Snapshot rebuild failed for " + perStepSnapshot);
+			}
+		}
+	}
+
+	return lastResult;
+}
 
 void SoarHelper::agent_command(sml::Agent* agent, const char* pCmd)
 {

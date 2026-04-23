@@ -1654,6 +1654,119 @@ namespace cli
             cli::CommandLineInterface& cli;
     };
 
+    class SaveAgentStateCommand : public cli::ParserCommand
+    {
+        public:
+            explicit SaveAgentStateCommand(cli::CommandLineInterface& cli) : ParserCommand(), cli(cli) {}
+            ~SaveAgentStateCommand() override = default;
+            [[nodiscard]] const char* GetString() const override
+            {
+                return "saveAgentState";
+            }
+            [[nodiscard]] const char* GetSyntax() const override
+            {
+                return "Syntax: saveAgentState <filename>";
+            }
+
+            bool Parse(std::vector< std::string >& argv) override
+            {
+                if (argv.size() != 2)
+                {
+                    cli.SetError("saveAgentState requires exactly one argument (filename).");
+                    return cli.AppendError(GetSyntax());
+                }
+                return cli.DoSaveAgentState(argv[1]);
+            }
+
+        private:
+            cli::CommandLineInterface& cli;
+    };
+
+    class LoadAgentStateCommand : public cli::ParserCommand
+    {
+        public:
+            explicit LoadAgentStateCommand(cli::CommandLineInterface& cli) : ParserCommand(), cli(cli) {}
+            ~LoadAgentStateCommand() override = default;
+            [[nodiscard]] const char* GetString() const override
+            {
+                return "loadAgentState";
+            }
+            [[nodiscard]] const char* GetSyntax() const override
+            {
+                return "Syntax: loadAgentState <filename>";
+            }
+
+            bool Parse(std::vector< std::string >& argv) override
+            {
+                if (argv.size() != 2)
+                {
+                    cli.SetError("loadAgentState requires exactly one argument (filename).");
+                    return cli.AppendError(GetSyntax());
+                }
+                return cli.DoLoadAgentState(argv[1]);
+            }
+
+        private:
+            cli::CommandLineInterface& cli;
+    };
+
+    class SaveKernelStateCommand : public cli::ParserCommand
+    {
+        public:
+            explicit SaveKernelStateCommand(cli::CommandLineInterface& cli) : ParserCommand(), cli(cli) {}
+            ~SaveKernelStateCommand() override = default;
+            [[nodiscard]] const char* GetString() const override
+            {
+                return "saveKernelState";
+            }
+            [[nodiscard]] const char* GetSyntax() const override
+            {
+                return "Syntax: saveKernelState <filename>";
+            }
+
+            bool Parse(std::vector< std::string >& argv) override
+            {
+                if (argv.size() != 2)
+                {
+                    cli.SetError("saveKernelState requires exactly one argument (filename).");
+                    return cli.AppendError(GetSyntax());
+                }
+                return cli.DoSaveKernelState(argv[1]);
+            }
+
+        private:
+            cli::CommandLineInterface& cli;
+    };
+
+    class LoadKernelStateCommand : public cli::ParserCommand
+    {
+        public:
+            explicit LoadKernelStateCommand(cli::CommandLineInterface& cli) : ParserCommand(), cli(cli) {}
+            ~LoadKernelStateCommand() override = default;
+            [[nodiscard]] const char* GetString() const override
+            {
+                return "loadKernelState";
+            }
+            [[nodiscard]] const char* GetSyntax() const override
+            {
+                return "Syntax: loadKernelState <filename>";
+            }
+
+            bool Parse(std::vector< std::string >& argv) override
+            {
+                if (argv.size() != 2)
+                {
+                    cli.SetError("loadKernelState requires exactly one argument (filename).");
+                    return cli.AppendError(GetSyntax());
+                }
+                return cli.DoLoadKernelState(argv[1]);
+            }
+
+        private:
+            cli::CommandLineInterface& cli;
+    };
+
 }
 
 #endif // CLI_COMMANDS_H
+

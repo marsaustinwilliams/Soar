@@ -85,4 +85,5 @@
 #include <working_memory_activation.cpp>
 #include <working_memory.cpp>
 #include <xml.cpp>
+#include <agent_state_serializer.cpp>
 

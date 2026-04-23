@@ -94,6 +94,88 @@ int KernelSML::GetListenerPort()
     return m_pConnectionManager->GetListenerPort();
 }
 
+std::vector<AgentSML*> KernelSML::GetAllAgentSML()
+{
+    std::vector<AgentSML*> agents;
+    agents.reserve(m_AgentMap.size());
+    for (AgentMapIter iter = m_AgentMap.begin(); iter != m_AgentMap.end(); ++iter)
+    {
+        agents.push_back(iter->second);
+    }
+    return agents;
+}
+
+AgentSML* KernelSML::CreateAgentSML(const char* agentName, bool loadUserSettings, bool fireCreationEvent)
+{
+    if (!agentName)
+    {
+        return NULL;
+    }
+
+    agent* pSoarAgent = create_soar_agent(const_cast<char*>(agentName));
+    AgentSML* pAgentSML = new AgentSML(this, pSoarAgent);
+
+    m_KernelAgentMap[pSoarAgent] = pAgentSML;
+    m_AgentMap[pAgentSML->GetName()] = pAgentSML;
+
+    pAgentSML->InitListeners();
+    pAgentSML->Init();
+
+    if (fireCreationEvent)
+    {
+        this->FireAgentEvent(pAgentSML, smlEVENT_AFTER_AGENT_CREATED);
+    }
+
+    xml_invoke_callback(pAgentSML->GetSoarAgent());
+    m_pConnectionManager->SetAgentStatus(sml_Names::kStatusCreated);
+
+    if (this->m_pRunScheduler->IsRunning())
+    {
+        pAgentSML->ResetLastOutputCount();
+        uint64_t count = pAgentSML->GetRunCounter(this->m_pRunScheduler->GetCurrentRunStepSize());
+        pAgentSML->SetInitialRunCount(count);
+        pAgentSML->ResetLocalRunCounters();
+        pAgentSML->SetCompletedOutputPhase(false);
+        pAgentSML->SetGeneratedOutput(false);
+        pAgentSML->SetInitialOutputCount(pAgentSML->GetNumOutputsGenerated());
+        pAgentSML->GetAgentRunCallback()->RegisterWithKernel(smlEVENT_AFTER_OUTPUT_PHASE);
+
+        this->m_pRunScheduler->ScheduleAgentToRun(pAgentSML, true);
+    }
+
+    if (loadUserSettings && !Soar_Instance::Get_Soar_Instance().was_run_from_unit_test())
+    {
+        std::string lFileName("settings.soar");
+        std::string directory = searchForFile(lFileName);
+        if (!directory.empty())
+        {
+            directory.insert(0, "source ");
+            pAgentSML->ExecuteCommandLine(directory.c_str());
+        }
+    }
+
+    pSoarAgent->outputManager->cache_output_modes();
+    return pAgentSML;
+}
+
+bool KernelSML::DestroyAgentSML(AgentSML* pAgentSML)
+{
+    if (!pAgentSML)
+    {
+        return false;
+    }
+
+    FireAgentEvent(pAgentSML, smlEVENT_BEFORE_AGENT_DESTROYED);
+
+    if (m_CommandLineInterface.IsLogOpen())
+    {
+        m_CommandLineInterface.DoCommand(0, pAgentSML, "output log --close", false, true, 0);
+    }
+
+    pAgentSML->DeleteSelf();
+    return true;
+}
+
 /** Deletes all agents and optionally waits until this has actually happened (if the agent is running there may be a delay) */
 void KernelSML::DeleteAllAgents(bool waitTillDeleted)
 {

@@ -1,0 +1,47 @@
+sp {stack*top*propose*alpha
+   (state <s> ^superstate nil)
+-->
+   (<s> ^operator <alpha> +)
+   (<alpha> ^name top-alpha)}
+
+sp {stack*top*propose*beta
+   (state <s> ^superstate nil)
+-->
+   (<s> ^operator <beta> +)
+   (<beta> ^name top-beta)}
+
+sp {stack*s2*elaborate
+   (state <s> ^impasse tie ^superstate <ss>)
+-->
+   (<s> ^mid-stack yes)
+   (<ss> ^deep-stack-visible yes)}
+
+sp {stack*s2*propose*alpha
+   (state <s> ^impasse tie ^superstate <ss>)
+-->
+   (<s> ^operator <alpha> +)
+   (<alpha> ^name nested-alpha)}
+
+sp {stack*s2*propose*beta
+   (state <s> ^impasse tie ^superstate <ss>)
+-->
+   (<s> ^operator <beta> +)
+   (<beta> ^name nested-beta)}
+
+sp {stack*s3*elaborate
+   (state <s> ^impasse tie ^superstate <ss>)
+-->
+   (<s> ^stack-depth three)}
+
+sp {stack*s3*propose*resolve
+   (state <s> ^impasse tie ^superstate <ss>)
+-->
+   (<s> ^operator <o> +)
+   (<o> ^name resolve-deep-stack ^target-super <ss>)}
+
+sp {stack*s3*apply*resolve
+   (state <s> ^impasse tie ^superstate <ss> ^operator <o>)
+   (<o> ^name resolve-deep-stack)
+-->
+   (<s> ^deep-result resolved)
+   (<ss> ^deep-child-result complete)}

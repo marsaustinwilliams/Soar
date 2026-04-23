@@ -491,6 +491,13 @@ EXPORT void SoarSeedRNG();
 // seed with a provided value
 EXPORT void SoarSeedRNG(const uint32_t seed);
 
+// Number of uint32 words required to snapshot RNG state.
+EXPORT uint32_t SoarRngStateWordCount();
+
+// Save/load full RNG state for deterministic restore.
+EXPORT void SoarSaveRNGState(uint32_t* out_state_words, uint32_t word_count);
+EXPORT bool SoarLoadRNGState(const uint32_t* state_words, uint32_t word_count);
+
 #endif  // SOAR_RAND_H
 
 // Change log:

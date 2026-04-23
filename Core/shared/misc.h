@@ -231,7 +231,7 @@ class soar_timer
 {
     public:
         soar_timer()
-            : t1(0), elapsed(0), enabled_ptr(NULL)
+            : t1(0), elapsed(0), enabled_ptr(NULL), running(false)
         {
             raw_per_usec = get_raw_time_per_usec();
         }
@@ -246,21 +246,24 @@ class soar_timer
             if ((!enabled_ptr) || (*enabled_ptr))
             {
                 t1 = get_raw_time();
+                running = true;
             }
         }
 
         void stop()
         {
-            if ((!enabled_ptr) || (*enabled_ptr))
+            if (((!enabled_ptr) || (*enabled_ptr)) && running)
             {
                 uint64_t t2 = get_raw_time();
                 elapsed = t2 - t1;
+                running = false;
             }
         }
 
         void reset()
         {
             t1 = elapsed = 0;
+            running = false;
         }
 
         uint64_t get_usec()
@@ -272,10 +275,44 @@ class soar_timer
             return 0;
         }
 
+        void export_state(uint64_t& out_t1,
+                          uint64_t& out_elapsed,
+                          double& out_raw_per_usec,
+                          bool& out_running) const
+        {
+            out_t1 = t1;
+            out_elapsed = elapsed;
+            out_raw_per_usec = raw_per_usec;
+            out_running = running;
+        }
+
+        void export_state(uint64_t& out_t1, uint64_t& out_elapsed, double& out_raw_per_usec) const
+        {
+            bool ignored_running = false;
+            export_state(out_t1, out_elapsed, out_raw_per_usec, ignored_running);
+        }
+
+        void import_state(uint64_t in_t1,
+                          uint64_t in_elapsed,
+                          double in_raw_per_usec,
+                          bool in_running)
+        {
+            t1 = in_t1;
+            elapsed = in_elapsed;
+            raw_per_usec = in_raw_per_usec;
+            running = in_running;
+        }
+
+        void import_state(uint64_t in_t1, uint64_t in_elapsed, double in_raw_per_usec)
+        {
+            import_state(in_t1, in_elapsed, in_raw_per_usec, false);
+        }
+
     private:
         uint64_t t1, elapsed;
         double raw_per_usec;
         bool* enabled_ptr;
+        bool running;
 
         soar_timer(const soar_timer&);
         soar_timer& operator=(const soar_timer&);
@@ -319,6 +356,11 @@ class soar_timer_accumulator
         uint64_t get_msec()
         {
             return total / 1000;
+        }
+
+        void set_usec(uint64_t usec)
+        {
+            total = usec;
         }
 };
 

@@ -44,8 +44,37 @@
 #include <ctype.h>
 #include "run_soar.h"
 #include <stdlib.h>
+#include <iostream>
 
 using namespace soar_TraceNames;
+
+static bool output_link_trace_enabled()
+{
+    return (std::getenv("SOAR_DEBUG_OUTPUT_LINK_TRACE") != nullptr) ||
+           (std::getenv("SOAR_DEBUG_INIT_TRACE") != nullptr);
+}
+
+static bool is_tracked_identifier(Symbol* id)
+{
+    if (!id || !id->is_sti())
+    {
+        return false;
+    }
+    return ((id->id->name_letter == 'S' && id->id->name_number == 1) ||
+            (id->id->name_letter == 'J' && id->id->name_number == 1) ||
+            (id->id->name_letter == 'I' && id->id->name_number == 4));
+}
+
+static uint64_t cons_length_io(cons* c)
+{
+    uint64_t count = 0;
+    while (c)
+    {
+        ++count;
+        c = c->rest;
+    }
+    return count;
+}
 
 void gds_invalid_so_remove_goal(agent* thisAgent, wme* w);
 
@@ -583,12 +612,31 @@ void remove_output_link_tc_info(agent* thisAgent, output_link* ol)
     cons* c, *prev_c;
     Symbol* id;
 
+    if (output_link_trace_enabled())
+    {
+        std::cerr << "[OL_TRACE] remove_tc begin d_cycle=" << thisAgent->d_cycle_count
+                  << " e_cycle=" << thisAgent->e_cycle_count
+                  << " ol=" << static_cast<void*>(ol)
+                  << " status=" << static_cast<int>(ol->status)
+                  << " ids_in_tc=" << cons_length_io(ol->ids_in_tc)
+                  << std::endl;
+    }
+
     while (ol->ids_in_tc)    /* for each id in the old TC... */
     {
         c = ol->ids_in_tc;
         ol->ids_in_tc = c->rest;
         id = static_cast<symbol_struct*>(c->first);
         free_cons(thisAgent, c);
+
+        if (output_link_trace_enabled() && is_tracked_identifier(id))
+        {
+            std::cerr << "[OL_TRACE] remove_tc id=" << id->id->name_letter << id->id->name_number
+                      << " ref_before=" << id->reference_count
+                      << " assoc_before=" << cons_length_io(id->id->associated_output_links)
+                      << " ol=" << static_cast<void*>(ol)
+                      << std::endl;
+        }
 
         /* --- remove "ol" from the list of associated_output_links(id) --- */
         prev_c = NIL;
@@ -615,6 +663,15 @@ void remove_output_link_tc_info(agent* thisAgent, output_link* ol)
         free_cons(thisAgent, c);
         thisAgent->symbolManager->symbol_remove_ref(&id);
     }
+
+    if (output_link_trace_enabled())
+    {
+        std::cerr << "[OL_TRACE] remove_tc end d_cycle=" << thisAgent->d_cycle_count
+                  << " e_cycle=" << thisAgent->e_cycle_count
+                  << " ol=" << static_cast<void*>(ol)
+                  << " ids_in_tc=" << cons_length_io(ol->ids_in_tc)
+                  << std::endl;
+    }
 }
 
 
@@ -632,12 +689,32 @@ void add_id_to_output_link_tc(agent* thisAgent, Symbol* id)
 
 
     /* --- add id to output_link's list --- */
+    const int ref_before = id->reference_count;
+    const uint64_t assoc_before = cons_length_io(id->id->associated_output_links);
     push(thisAgent, id, thisAgent->output_link_for_tc->ids_in_tc);
     thisAgent->symbolManager->symbol_add_ref(id);  /* make sure the id doesn't get deallocated before we
                            have a chance to free the cons cell we just added */
 
+    if (output_link_trace_enabled() && is_tracked_identifier(id))
+    {
+        std::cerr << "[OL_TRACE] add_tc id=" << id->id->name_letter << id->id->name_number
+                  << " d_cycle=" << thisAgent->d_cycle_count
+                  << " e_cycle=" << thisAgent->e_cycle_count
+                  << " ref_before=" << ref_before
+                  << " ref_after=" << id->reference_count
+                  << " assoc_before=" << assoc_before
+                  << std::endl;
+    }
+
     /* --- add output_link to id's list --- */
     push(thisAgent, thisAgent->output_link_for_tc, id->id->associated_output_links);
+
+    if (output_link_trace_enabled() && is_tracked_identifier(id))
+    {
+        std::cerr << "[OL_TRACE] add_tc_assoc id=" << id->id->name_letter << id->id->name_number
+                  << " assoc_after=" << cons_length_io(id->id->associated_output_links)
+                  << std::endl;
+    }
 
     /* --- do TC through working memory --- */
     /* --- scan through all wmes for all slots for this id --- */

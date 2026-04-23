@@ -152,6 +152,12 @@ void add_wme_to_wm(agent* thisAgent, wme* w)
 void remove_wme_from_wm(agent* thisAgent, wme* w)
 {
 
+    if (w->value && (w->value->decider_wme == w))
+    {
+        w->value->decider_wme = NIL;
+        w->value->decider_flag = NOTHING_DECIDER_FLAG;
+    }
+
     push(thisAgent, w, thisAgent->wmes_to_remove);
 
     if (w->value->is_sti())

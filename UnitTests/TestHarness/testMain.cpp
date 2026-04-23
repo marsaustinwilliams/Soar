@@ -38,10 +38,12 @@
 #include "MultiAgentTest.hpp"
 #include "SimpleListener.hpp"
 #include "SMemFunctionalTests.hpp"
+#include "SnapshotProgressionTests.hpp"
 #include "SvsTests.hpp"
 #include "TokenizerTest.hpp"
 #include "wma/WmaFunctionalTests.hpp"
 #include "TestCategory.hpp"
+#include "SnapshotTestCategory.hpp"
 #include "TestRunner.hpp"
 
 #if defined(_WIN32) || defined(WIN32)
@@ -75,6 +77,7 @@ void usage(std::string arg0)
     std::cout << "\t" << "-l --logs"                        << "\t\t\t\t" << "Record logs of agent trials." << std::endl;
     std::cout << "\t" << "-x --no-explainer"                << "\t\t\t" << "Run learning agents with explainer on." << std::endl;
     std::cout << "\t" << "-r --run-debug-mode"              << "\t\t\t" << "Don't force strict unit test settings." << std::endl;
+    std::cout << "\t" << "   --snapshot-every-step"         << "\t\t" << "Run snapshot variants that save, init, excise, run 1, and reload during execution." << std::endl;
     std::cout << "\t" << "-h --help"                        << "\t\t\t\t" << "This help message." << std::endl;
     std::cout << "\t" << "-s --silent"                      << "\t\t\t\t" << "Always return 0.  Read Test.xml for results." << std::endl;
     std::cout << std::endl;
@@ -112,6 +115,7 @@ int main(int argc, char** argv)
     bool silent = false;
     bool list_categories = false;
     bool list_tests = false;
+    bool snapshot_variants = false;
 
     #if defined(_WIN32) || defined(WIN32)
     // Allows printing emoji ✅
@@ -152,6 +156,10 @@ int main(int argc, char** argv)
         else if ((argument == "--no-refcount-leak-check" || argument == "-n"))
         {
             SoarHelper::no_init_soar = true;
+        }
+        else if (argument == "--snapshot-every-step")
+        {
+            snapshot_variants = true;
         }
         else if ((argument == "--category" || argument == "-c") && parameter.length() > 0)
         {
@@ -218,27 +226,28 @@ int main(int argc, char** argv)
 
     std::vector<TestCategory*> tests;
 
-    TEST_DECLARATION(AgentTest);
-    TEST_DECLARATION(AliasTest);
-    TEST_DECLARATION(BasicTests);
-    TEST_DECLARATION(BuiltinRHSTests);
-    TEST_DECLARATION(ChunkingDemoTests);
-    TEST_DECLARATION(ChunkingTests);
-    TEST_DECLARATION(EpMemFunctionalTests);
-    TEST_DECLARATION(ElementXMLTest);
-    TEST_DECLARATION(ExternalLibraryTest);
-    TEST_DECLARATION(FullTests);
-    TEST_DECLARATION(FullTestsClientThreadFullyOptimized);
-    TEST_DECLARATION(FullTestsClientThread);
+    if (snapshot_variants) tests.push_back(new SnapshotTestCategory<AgentTest>()); else TEST_DECLARATION(AgentTest);
+    if (snapshot_variants) tests.push_back(new SnapshotTestCategory<AliasTest>()); else TEST_DECLARATION(AliasTest);
+    if (snapshot_variants) tests.push_back(new SnapshotTestCategory<BasicTests>()); else TEST_DECLARATION(BasicTests);
+    if (snapshot_variants) tests.push_back(new SnapshotTestCategory<BuiltinRHSTests>()); else TEST_DECLARATION(BuiltinRHSTests);
+    if (snapshot_variants) tests.push_back(new SnapshotTestCategory<ChunkingDemoTests>()); else TEST_DECLARATION(ChunkingDemoTests);
+    if (snapshot_variants) tests.push_back(new SnapshotTestCategory<ChunkingTests>()); else TEST_DECLARATION(ChunkingTests);
+    if (snapshot_variants) tests.push_back(new SnapshotTestCategory<EpMemFunctionalTests>()); else TEST_DECLARATION(EpMemFunctionalTests);
+    if (snapshot_variants) tests.push_back(new SnapshotTestCategory<ElementXMLTest>()); else TEST_DECLARATION(ElementXMLTest);
+    if (snapshot_variants) tests.push_back(new SnapshotTestCategory<ExternalLibraryTest>()); else TEST_DECLARATION(ExternalLibraryTest);
+    if (snapshot_variants) tests.push_back(new SnapshotTestCategory<FullTests>()); else TEST_DECLARATION(FullTests);
+    if (snapshot_variants) tests.push_back(new SnapshotTestCategory<FullTestsClientThreadFullyOptimized>()); else TEST_DECLARATION(FullTestsClientThreadFullyOptimized);
+    if (snapshot_variants) tests.push_back(new SnapshotTestCategory<FullTestsClientThread>()); else TEST_DECLARATION(FullTestsClientThread);
     //	TEST_DECLARATION(FullTestsRemote);
-    TEST_DECLARATION(FunctionalTests);
-    TEST_DECLARATION(IOTests);
-    TEST_DECLARATION(MiscTests);
-    TEST_DECLARATION(MultiAgentTest);
-    TEST_DECLARATION(SMemFunctionalTests);
-    TEST_DECLARATION(SvsTests);
-    TEST_DECLARATION(TokenizerTest);
-    TEST_DECLARATION(WmaFunctionalTests);
+    if (snapshot_variants) tests.push_back(new SnapshotTestCategory<FunctionalTests>()); else TEST_DECLARATION(FunctionalTests);
+    if (snapshot_variants) tests.push_back(new SnapshotTestCategory<IOTests>()); else TEST_DECLARATION(IOTests);
+    if (snapshot_variants) tests.push_back(new SnapshotTestCategory<MiscTests>()); else TEST_DECLARATION(MiscTests);
+    if (snapshot_variants) tests.push_back(new SnapshotTestCategory<MultiAgentTest>()); else TEST_DECLARATION(MultiAgentTest);
+    if (snapshot_variants) tests.push_back(new SnapshotTestCategory<SMemFunctionalTests>()); else TEST_DECLARATION(SMemFunctionalTests);
+    if (snapshot_variants) tests.push_back(new SnapshotTestCategory<SnapshotProgressionTests>()); else TEST_DECLARATION(SnapshotProgressionTests);
+    if (snapshot_variants) tests.push_back(new SnapshotTestCategory<SvsTests>()); else TEST_DECLARATION(SvsTests);
+    if (snapshot_variants) tests.push_back(new SnapshotTestCategory<TokenizerTest>()); else TEST_DECLARATION(TokenizerTest);
+    if (snapshot_variants) tests.push_back(new SnapshotTestCategory<WmaFunctionalTests>()); else TEST_DECLARATION(WmaFunctionalTests);
 
     // Support options to print a list of categories or tests, then exit
     if (list_categories) 

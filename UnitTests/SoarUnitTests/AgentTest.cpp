@@ -7,6 +7,7 @@
 //
 
 #include "AgentTest.hpp"
+#include "SoarHelper.hpp"
 #include "soar_instance.h"
 
 void AgentTest::setUp()
@@ -19,6 +20,7 @@ void AgentTest::setUp()
 
 void AgentTest::tearDown(bool caught)
 {
+	SoarHelper::normalize_after_snapshot_testing(agent);
 	kernel->DestroyAgent(agent);
 	kernel->Shutdown();
 	delete kernel;
@@ -38,7 +40,7 @@ void AgentTest::testSetStopPhaseSetsTheStopPhaseProperty()
 
 void AgentTest::testGetGoalStack()
 {
-	agent->RunSelf(3);
+	SoarHelper::run_self(agent, 3, "AgentTest_testGetGoalStack");
 	// We start with S1. Running three steps, gives three new states, S2, S3, S4
 	const std::vector<std::string> gs = SoarHelper::getGoalStack(agent);
 	assertEquals(size_t(4), gs.size());

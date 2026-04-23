@@ -172,7 +172,7 @@ void ChunkingTests::check_chunk(const char* pTestName, int64_t decisions, int64_
 //        SoarHelper::agent_command(agent,"trace -CbL 2");
 //    }
     SoarHelper::check_learning_override(agent);
-    agent->RunSelf(decisions, sml::sml_DECIDE);
+    SoarHelper::run_self(agent, static_cast<int>(decisions), getCategoryName() + std::string("_") + pTestName, nullptr, sml::sml_DECIDE);
     assertTrue_msg(agent->GetLastErrorDescription(), agent->GetLastCommandLineResult());
 
     verify_chunk(pTestName, expected_chunks, directSourceChunks);
@@ -225,6 +225,10 @@ void ChunkingTests::verify_chunk(const char* pTestName, int64_t expected_chunks,
         ignored = response.GetArgInt(sml::sml_Names::kParamIgnoredProductionCount, -1);
         sourced = response.GetArgInt(sml::sml_Names::kParamSourcedProductionCount, -1);
         excised = response.GetArgInt(sml::sml_Names::kParamExcisedProductionCount, -1);
+        std::cout << "verify_chunk " << pTestName
+              << ": sourced=" << sourced
+              << " excised=" << excised
+              << " ignored=" << ignored << std::endl;
         std::ostringstream outStringStream("");
         if (ignored < expected_chunks)
         {
@@ -264,7 +268,7 @@ void ChunkingTests::Singleton_Element_Types()
 
     SoarHelper::check_learning_override(agent);
 
-    agent->RunSelf(3, sml::sml_DECIDE);
+    SoarHelper::run_self(agent, 3, getCategoryName() + std::string("_Singleton_Element_Types_pass_1"), nullptr, sml::sml_DECIDE);
     assertTrue_msg(agent->GetLastErrorDescription(), agent->GetLastCommandLineResult());
 
     SoarHelper::agent_command(agent,"chunk singleton -c");
@@ -275,7 +279,7 @@ void ChunkingTests::Singleton_Element_Types()
     SoarHelper::agent_command(agent,"chunk singleton state constant-i constant");
     SoarHelper::agent_command(agent,"chunk singleton state constant-s constant");
     SoarHelper::agent_command(agent,"chunk singleton state constant-f constant");
-    agent->RunSelf(3, sml::sml_DECIDE);
+    SoarHelper::run_self(agent, 3, getCategoryName() + std::string("_Singleton_Element_Types_pass_2"), nullptr, sml::sml_DECIDE);
     assertTrue_msg(agent->GetLastErrorDescription(), agent->GetLastCommandLineResult());
 
     SoarHelper::agent_command(agent,"chunk singleton -c");
@@ -286,7 +290,7 @@ void ChunkingTests::Singleton_Element_Types()
     SoarHelper::agent_command(agent,"chunk singleton identifier constant-i constant");
     SoarHelper::agent_command(agent,"chunk singleton identifier constant-s constant");
     SoarHelper::agent_command(agent,"chunk singleton identifier constant-f constant");
-    agent->RunSelf(3, sml::sml_DECIDE);
+    SoarHelper::run_self(agent, 3, getCategoryName() + std::string("_Singleton_Element_Types_pass_3"), nullptr, sml::sml_DECIDE);
     assertTrue_msg(agent->GetLastErrorDescription(), agent->GetLastCommandLineResult());
 
     SoarHelper::agent_command(agent,"chunk singleton -c");
@@ -298,7 +302,7 @@ void ChunkingTests::Singleton_Element_Types()
     SoarHelper::agent_command(agent,"chunk singleton operator constant-s constant");
     SoarHelper::agent_command(agent,"chunk singleton operator constant-f constant");
 
-    agent->RunSelf(3, sml::sml_DECIDE);
+    SoarHelper::run_self(agent, 3, getCategoryName() + std::string("_Singleton_Element_Types_pass_4"), nullptr, sml::sml_DECIDE);
     assertTrue_msg(agent->GetLastErrorDescription(), agent->GetLastCommandLineResult());
 
     SoarHelper::agent_command(agent,"chunk singleton -c");
@@ -310,7 +314,7 @@ void ChunkingTests::Singleton_Element_Types()
     SoarHelper::agent_command(agent,"chunk singleton any constant-s constant");
     SoarHelper::agent_command(agent,"chunk singleton any constant-f constant");
 
-    agent->RunSelf(3, sml::sml_DECIDE);
+    SoarHelper::run_self(agent, 3, getCategoryName() + std::string("_Singleton_Element_Types_pass_5"), nullptr, sml::sml_DECIDE);
     assertTrue_msg(agent->GetLastErrorDescription(), agent->GetLastCommandLineResult());
 
     SoarHelper::agent_command(agent,"chunk singleton -c");
@@ -322,7 +326,7 @@ void ChunkingTests::Singleton_Element_Types()
     SoarHelper::agent_command(agent,"chunk singleton state constant-s any");
     SoarHelper::agent_command(agent,"chunk singleton state constant-f any");
 
-    agent->RunSelf(3, sml::sml_DECIDE);
+    SoarHelper::run_self(agent, 3, getCategoryName() + std::string("_Singleton_Element_Types_pass_6"), nullptr, sml::sml_DECIDE);
     assertTrue_msg(agent->GetLastErrorDescription(), agent->GetLastCommandLineResult());
 
     SoarHelper::agent_command(agent,"chunk singleton -c");
@@ -334,7 +338,7 @@ void ChunkingTests::Singleton_Element_Types()
     SoarHelper::agent_command(agent,"chunk singleton any constant-s any");
     SoarHelper::agent_command(agent,"chunk singleton any constant-f any");
 
-    agent->RunSelf(3, sml::sml_DECIDE);
+    SoarHelper::run_self(agent, 3, getCategoryName() + std::string("_Singleton_Element_Types_pass_7"), nullptr, sml::sml_DECIDE);
     assertTrue_msg(agent->GetLastErrorDescription(), agent->GetLastCommandLineResult());
 
     SoarHelper::agent_command(agent,"chunk singleton -c");
@@ -346,7 +350,7 @@ void ChunkingTests::Singleton_Element_Types()
     SoarHelper::agent_command(agent,"chunk singleton identifier constant-s constant");
     SoarHelper::agent_command(agent,"chunk singleton identifier constant-f constant");
 
-    agent->RunSelf(3, sml::sml_DECIDE);
+    SoarHelper::run_self(agent, 3, getCategoryName() + std::string("_Singleton_Element_Types_pass_8"), nullptr, sml::sml_DECIDE);
     assertTrue_msg(agent->GetLastErrorDescription(), agent->GetLastCommandLineResult());
 
     SoarHelper::agent_command(agent,"chunk singleton -c");
@@ -358,7 +362,7 @@ void ChunkingTests::Singleton_Element_Types()
     SoarHelper::agent_command(agent,"chunk singleton identifier constant-s identifier");
     SoarHelper::agent_command(agent,"chunk singleton identifier constant-f identifier");
 
-    agent->RunSelf(3, sml::sml_DECIDE);
+    SoarHelper::run_self(agent, 3, getCategoryName() + std::string("_Singleton_Element_Types_pass_9"), nullptr, sml::sml_DECIDE);
     assertTrue_msg(agent->GetLastErrorDescription(), agent->GetLastCommandLineResult());
 
     SoarHelper::agent_command(agent,"chunk singleton -c");
@@ -370,7 +374,7 @@ void ChunkingTests::Singleton_Element_Types()
     SoarHelper::agent_command(agent,"chunk singleton identifier constant-s state");
     SoarHelper::agent_command(agent,"chunk singleton identifier constant-f state");
 
-    agent->RunSelf(3, sml::sml_DECIDE);
+    SoarHelper::run_self(agent, 3, getCategoryName() + std::string("_Singleton_Element_Types_pass_10"), nullptr, sml::sml_DECIDE);
     assertTrue_msg(agent->GetLastErrorDescription(), agent->GetLastCommandLineResult());
 
     SoarHelper::agent_command(agent,"chunk singleton -c");

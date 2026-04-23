@@ -20,6 +20,31 @@
 #include "symbol.h"
 
 #include <cinttypes>
+#include <cstdlib>
+#include <execinfo.h>
+#include <iostream>
+
+namespace
+{
+void maybe_print_refcount_leak_backtrace(uint32_t identifier_count)
+{
+    static const bool enabled = (std::getenv("SOAR_DEBUG_REFCNT_LEAK_BT") != nullptr);
+    static uint32_t last_reported_count = UINT32_MAX;
+
+    if (!enabled || !identifier_count || (identifier_count == last_reported_count))
+    {
+        return;
+    }
+
+    last_reported_count = identifier_count;
+
+    void* frames[64];
+    int frame_count = backtrace(frames, 64);
+
+    std::cerr << "\n[refcount-leak-debug] identifier_count=" << identifier_count << "\n";
+    backtrace_symbols_fd(frames, frame_count, 2);
+}
+}
 
 Symbol_Manager::Symbol_Manager(agent* pAgent)
 {
@@ -244,6 +269,16 @@ bool retesave_symbol_and_assign_index(agent* thisAgent, void* item, void* userda
     return false;
 }
 
+bool clear_retesave_symbol_index(agent* /*thisAgent*/, void* item, void* /*userdata*/)
+{
+    Symbol* sym = static_cast<symbol_struct*>(item);
+    if (sym)
+    {
+        sym->retesave_symindex = 0;
+    }
+    return false;
+}
+
 
 void Symbol_Manager::retesave(FILE* f)
 {
@@ -259,6 +294,15 @@ void Symbol_Manager::retesave(FILE* f)
     do_for_all_items_in_hash_table(thisAgent, int_constant_hash_table, retesave_symbol_and_assign_index, f);
     do_for_all_items_in_hash_table(thisAgent, float_constant_hash_table, retesave_symbol_and_assign_index, f);
 }
+
+void Symbol_Manager::clear_retesave_symbol_indices()
+{
+    do_for_all_items_in_hash_table(thisAgent, str_constant_hash_table, clear_retesave_symbol_index, NIL);
+    do_for_all_items_in_hash_table(thisAgent, variable_hash_table, clear_retesave_symbol_index, NIL);
+    do_for_all_items_in_hash_table(thisAgent, int_constant_hash_table, clear_retesave_symbol_index, NIL);
+    do_for_all_items_in_hash_table(thisAgent, float_constant_hash_table, clear_retesave_symbol_index, NIL);
+}
+
 Symbol* Symbol_Manager::find_variable(const char* name)
 {
     uint32_t hash_value;
@@ -1020,6 +1064,30 @@ bool print_sym(agent* thisAgent, void* item, void*)
     return false;
 }
 
+bool print_sym_stderr(agent* /*thisAgent*/, void* item, void*)
+{
+    Symbol* sym = static_cast<symbol_struct*>(item);
+    std::cerr << sym->to_string() << " (" << sym->reference_count << ")";
+    if (sym->is_sti())
+    {
+        std::cerr << " goal=" << sym->id->isa_goal
+                  << " op=" << sym->id->isa_operator
+                  << " slots=" << static_cast<void*>(sym->id->slots)
+                  << " input_wmes=" << static_cast<void*>(sym->id->input_wmes)
+                  << " impasse_wmes=" << static_cast<void*>(sym->id->impasse_wmes)
+                  << " assoc_ol=" << static_cast<void*>(sym->id->associated_output_links)
+                  << " op_slot=" << static_cast<void*>(sym->id->operator_slot)
+                  << " h_goal=" << static_cast<void*>(sym->id->higher_goal)
+                  << " l_goal=" << static_cast<void*>(sym->id->lower_goal)
+                  << " rl=" << static_cast<void*>(sym->id->rl_info)
+                  << " epmem=" << static_cast<void*>(sym->id->epmem_info)
+                  << " smem=" << static_cast<void*>(sym->id->smem_info)
+                  << " gds=" << static_cast<void*>(sym->id->gds);
+    }
+    std::cerr << std::endl;
+    return false;
+}
+
 void Symbol_Manager::clear_variable_gensym_numbers()
 {
     do_for_all_items_in_hash_table(thisAgent, variable_hash_table, clear_gensym_number, 0);
@@ -1045,6 +1113,14 @@ void Symbol_Manager::reset_hash_table(MemoryPoolType lHashTable)
     {
         if (identifier_hash_table->count != 0)
         {
+            maybe_print_refcount_leak_backtrace(identifier_hash_table->count);
+            const bool dump_identifiers = (std::getenv("SOAR_DEBUG_REFCNT_LEAK_DUMP") != nullptr);
+            if (dump_identifiers)
+            {
+                std::cerr << "[refcount-leak-debug] dumping identifiers" << std::endl;
+                do_for_all_items_in_hash_table(thisAgent, identifier_hash_table, print_sym_stderr, 0);
+            }
+
             if (Soar_Instance::Get_Soar_Instance().was_run_from_unit_test())
             {
                 /* If you #define CONFIGURE_SOAR_FOR_UNIT_TESTS and INIT_AFTER_RUN unit_tests.h, the following
@@ -1120,7 +1196,14 @@ Symbol* Symbol_Manager::generate_new_str_constant(const char* prefix, uint64_t* 
 /* *********************************************************************
 
                          Variable Generator
-
+                        for (uint32_t bucket = 0; bucket < identifier_hash_table->size; ++bucket)
+                        {
+                            for (item_in_hash_table* item = (*(identifier_hash_table->buckets + bucket)); item != NIL; item = item->next)
+                            {
+                                Symbol* sym = reinterpret_cast<Symbol*>(&(item->data));
+                                std::fprintf(stderr, "%s (%llu)\n", sym->to_string(), static_cast<unsigned long long>(sym->reference_count));
+                            }
+                        }
    These routines are used for generating new variables.  The variables
    aren't necessarily "completely" new--they might occur in some existing
    production.  But we usually need to make sure the new variables don't

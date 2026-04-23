@@ -1,0 +1,23 @@
+sp {io*substate*elaborate
+   (state <s> ^impasse no-change ^attribute state ^superstate <ss> ^superstate.io.input-link <il>)
+   (<il> ^sensor ready)
+-->
+   (<s> ^io-substate-visible yes)
+   (<ss> ^io-substate-super-visible yes)}
+
+sp {io*substate*propose*emit
+   (state <s> ^impasse no-change ^attribute state ^superstate <ss> ^superstate.io.input-link <il>)
+   (<il> ^sensor ready)
+-->
+   (<s> ^operator <o> +)
+   (<o> ^name emit-from-substate ^payload ready)}
+
+sp {io*substate*apply*emit
+   (state <s> ^impasse no-change ^attribute state ^superstate <ss> ^superstate.io.output-link <ol> ^operator <o>)
+   (<o> ^name emit-from-substate ^payload <payload>)
+-->
+   (<ol> ^substate-status emitted)
+   (<ol> ^substate-command <c>)
+   (<c> ^name relay-from-substate ^payload <payload>)
+   (<s> ^io-substate-result sent)
+   (<ss> ^io-substate-super-result sent)}

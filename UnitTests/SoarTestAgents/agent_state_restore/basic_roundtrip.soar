@@ -1,0 +1,11 @@
+sp {propose*austin*operator
+   (state <s> ^superstate nil)
+-->
+   (<s> ^operator <o> +)
+   (<o> ^name austin-op)}
+
+sp {apply*austin*operator
+   (state <s> ^superstate nil ^operator <o>)
+   (<o> ^name austin-op)
+-->
+   (<s> ^onGod AustinIsAbeast)}

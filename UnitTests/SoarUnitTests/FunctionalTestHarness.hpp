@@ -53,6 +53,10 @@ protected:
 
 	void afterDecisionCycleHandler();
 	void printHandler(const char* msg);
+	bool snapshotRebuildSupported();
+	std::string snapshotStemForTest(const std::string& testName);
+	std::string runDecisionSteps(int decisionCount, const std::string& snapshotStem, sml::smlRunStepSize stepSize = sml::sml_DECIDE);
+	std::string runDecisionStepsUntilHalt(const std::string& snapshotStem, sml::smlRunStepSize stepSize = sml::sml_DECIDE);
 
 public:
 	/**

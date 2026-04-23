@@ -33,7 +33,7 @@ void MiscTests::testInstiationDeallocationStackOverflow()
 {
 	source("count-and-die.soar");
 	agent->ExecuteCommandLine("w 0");
-	kernel->RunAllAgentsForever();
+	SoarHelper::run_all_agents_forever(kernel, agent, getCategoryName() + std::string("_testInstiationDeallocationStackOverflow"));
 	SoarHelper::init_check_to_find_refcount_leaks(agent);
 }
 
@@ -41,28 +41,28 @@ void MiscTests::testGDS_Failed_Justification_Crash()
 {
     source("testGDS_Failed_Justification_Crash.soar");
     agent->ExecuteCommandLine("w 0");
-    kernel->RunAllAgentsForever();
+	SoarHelper::run_all_agents_forever(kernel, agent, getCategoryName() + std::string("_testGDS_Failed_Justification_Crash"));
     SoarHelper::init_check_to_find_refcount_leaks(agent);
 }
 void MiscTests::testIsupported_Smem_Chunk_Crash()
 {
     source("testIsupported_Smem_Chunk_Crash.soar");
     agent->ExecuteCommandLine("w 0");
-    kernel->RunAllAgentsForever();
+	SoarHelper::run_all_agents_forever(kernel, agent, getCategoryName() + std::string("_testIsupported_Smem_Chunk_Crash"));
     SoarHelper::init_check_to_find_refcount_leaks(agent);
 }
 void MiscTests::testNegated_Operator_Crash()
 {
     source("testNegated_Operator_Crash.soar");
     agent->ExecuteCommandLine("w 0");
-    kernel->RunAllAgentsForever();
+	SoarHelper::run_all_agents_forever(kernel, agent, getCategoryName() + std::string("_testNegated_Operator_Crash"));
     SoarHelper::init_check_to_find_refcount_leaks(agent);
 }
 void MiscTests::testOp_Augmentation_Crash()
 {
     source("testOp_Augmentation_Crash.soar");
     agent->ExecuteCommandLine("w 0");
-    kernel->RunAllAgentsForever();
+	SoarHelper::run_all_agents_forever(kernel, agent, getCategoryName() + std::string("_testOp_Augmentation_Crash"));
     SoarHelper::init_check_to_find_refcount_leaks(agent);
 }
 
@@ -72,9 +72,9 @@ void MiscTests::test_clog()
 	assertTrue_msg("clog clog-test.txt", agent->GetLastCommandLineResult());
 	agent->ExecuteCommandLine("watch 5");
 	assertTrue_msg("watch 5", agent->GetLastCommandLineResult());
-	agent->RunSelf(5);
+	SoarHelper::run_self(agent, 5, getCategoryName() + std::string("_test_clog_first_pass"));
 	agent->InitSoar();
-	agent->RunSelf(5);
+	SoarHelper::run_self(agent, 5, getCategoryName() + std::string("_test_clog_second_pass"));
 
 	tearDown(false);
 	setUp();
@@ -84,9 +84,9 @@ void MiscTests::test_clog()
 	assertTrue_msg("clog clog-test.txt", agent->GetLastCommandLineResult());
 	agent->ExecuteCommandLine("watch 5");
 	assertTrue_msg("watch 5", agent->GetLastCommandLineResult());
-	agent->RunSelf(5);
+	SoarHelper::run_self(agent, 5, getCategoryName() + std::string("_test_clog_third_pass"));
 	agent->InitSoar();
-	agent->RunSelf(5);
+	SoarHelper::run_self(agent, 5, getCategoryName() + std::string("_test_clog_fourth_pass"));
 	agent->ExecuteCommandLine("clog --close");
 	remove("clog-test.txt");
 	SoarHelper::init_check_to_find_refcount_leaks(agent);
@@ -228,25 +228,25 @@ void MiscTests::test_stats()
 
 	agent->ExecuteCommandLine("stats -t");
 	assertTrue(agent->GetLastCommandLineResult());
-	agent->RunSelf(10);
+	SoarHelper::run_self(agent, 10, getCategoryName() + std::string("_test_stats_pass_1"));
 	std::string res = agent->ExecuteCommandLine("stats -c");
 	assertTrue(!res.empty());
 
 	agent->ExecuteCommandLine("stats -t");
 	assertTrue(agent->GetLastCommandLineResult());
-	agent->RunSelf(10);
+	SoarHelper::run_self(agent, 10, getCategoryName() + std::string("_test_stats_pass_2"));
 	res = agent->ExecuteCommandLine("stats -c");
 	assertTrue(!res.empty());
 
 	agent->ExecuteCommandLine("stats -T");
 	assertTrue(agent->GetLastCommandLineResult());
-	agent->RunSelf(10);
+	SoarHelper::run_self(agent, 10, getCategoryName() + std::string("_test_stats_pass_3"));
 	res = agent->ExecuteCommandLine("stats -c");
 	assertTrue(res.empty());
 
 	agent->ExecuteCommandLine("stats -t");
 	assertTrue(agent->GetLastCommandLineResult());
-	agent->RunSelf(10);
+	SoarHelper::run_self(agent, 10, getCategoryName() + std::string("_test_stats_pass_4"));
 	res = agent->ExecuteCommandLine("stats -c");
 	assertTrue(!res.empty());
 
@@ -289,7 +289,7 @@ void MiscTests::testWrongAgentWmeFunctions()
 void MiscTests::testRegression370()
 {
 	source("testRegression370.soar");
-	agent->RunSelf(5000);
+	SoarHelper::run_self(agent, 5000, getCategoryName() + std::string("_testRegression370"));
 	SoarHelper::init_check_to_find_refcount_leaks(agent);
 }
 
@@ -297,7 +297,7 @@ void MiscTests::testRHSRand()
 {
 	kernel->AddRhsFunction("failed", Handlers::MyRhsFunctionFailureHandler, 0) ;
 	source("testRHSRand.soar");
-	agent->RunSelf(5000);
+	SoarHelper::run_self(agent, 5000, getCategoryName() + std::string("_testRHSRand"));
 	SoarHelper::init_check_to_find_refcount_leaks(agent);
 }
 
@@ -323,7 +323,7 @@ void MiscTests::testSmemArithmetic()
 	agent->ExecuteCommandLine("watch 0");
 	agent->ExecuteCommandLine("srand 1080");
 
-	agent->RunSelfForever();
+	SoarHelper::run_self_forever(agent, getCategoryName() + std::string("_testSmemArithmetic"));
 
 	sml::ClientAnalyzedXML stats;
 	agent->ExecuteCommandLineXML("stats", &stats);
@@ -354,7 +354,7 @@ void MiscTests::testPreferenceDeallocation()
 {
 	source("testPreferenceDeallocation.soar");
     SoarHelper::check_learning_override(agent);
-	agent->ExecuteCommandLine("run 10");
+	SoarHelper::run_self(agent, 10, getCategoryName() + std::string("_testPreferenceDeallocation"));
 
 	sml::ClientAnalyzedXML response;
 	agent->ExecuteCommandLineXML("stats", &response);
@@ -382,7 +382,7 @@ void MiscTests::testProductionPrinting()
 void MiscTests::testLocationPredictionRhs()
 {
 	source("predict-location.soar");
-    agent->RunSelf(1);
+	SoarHelper::run_self(agent, 1, getCategoryName() + std::string("_testLocationPredictionRhs"));
     std::string result = agent->ExecuteCommandLine("p s1");
     // Should contain "^new-x-position 17"
     no_agent_assertTrue_msg("extrapolate-x-position failed: " + result, result.find("^new-x-position 17") != std::string::npos);
@@ -448,7 +448,7 @@ void MiscTests::testPerceptReplayEscape()
 		std::remove("testPerceptReplayEscape_Simple.spr");
 		
 		agent->Commit();
-		agent->RunSelf(2);
+		SoarHelper::run_self(agent, 2, getCategoryName() + std::string("_testPerceptReplayEscape_simple"));
 		
 		// Synchronize input link so SML can see the loaded percepts
 		agent->SynchronizeInputLink();
@@ -485,7 +485,7 @@ void MiscTests::testPerceptReplayEscape()
 		// Delete file immediately after loading
 		std::remove("testPerceptReplayEscape_Escaped.spr");
 		
-		agent->RunSelf(2, sml::sml_DECIDE);
+		SoarHelper::run_self(agent, 2, getCategoryName() + std::string("_testPerceptReplayEscape_escaped"), nullptr, sml::sml_DECIDE);
 		agent->Commit();
 		
 		// Synchronize input link so SML can see the loaded percepts
@@ -522,7 +522,7 @@ void MiscTests::testPerceptReplayEscape()
 		// Delete file immediately after loading
 		std::remove("testPerceptReplayEscape_Regex.spr");
 		
-		agent->RunSelf(2, sml::sml_DECIDE);
+		SoarHelper::run_self(agent, 2, getCategoryName() + std::string("_testPerceptReplayEscape_regex"), nullptr, sml::sml_DECIDE);
 		agent->Commit();
 		
 		// Synchronize input link so SML can see the loaded percepts

@@ -25,7 +25,10 @@ void Identity::clean_up()
     {
         if (joined_identity != this)
         {
-            joined_identity->merged_identities->remove(this);
+            if (joined_identity->merged_identities)
+            {
+                joined_identity->merged_identities->remove(this);
+            }
         }
         if (merged_identities)
         {

@@ -54,6 +54,7 @@
 #include "smem_settings.h"
 #include "smem_stats.h"
 #include "smem_structs.h"
+#include "slot.h"
 #include "soar_instance.h"
 #include "soar_module.h"
 #include "stats.h"
@@ -69,7 +70,247 @@
 #endif
 
 #include <stdlib.h>
+#include <iostream>
 #include <map>
+#include <vector>
+
+static bool init_trace_enabled()
+{
+    return (std::getenv("SOAR_DEBUG_INIT_TRACE") != nullptr);
+}
+
+static uint64_t cons_length(cons* c)
+{
+    uint64_t count = 0;
+    while (c)
+    {
+        ++count;
+        c = c->rest;
+    }
+    return count;
+}
+
+static uint64_t output_link_count(agent* thisAgent)
+{
+    uint64_t count = 0;
+    for (output_link* ol = thisAgent->existing_output_links; ol != NIL; ol = ol->next)
+    {
+        ++count;
+    }
+    return count;
+}
+
+static uint64_t wme_count(wme* head)
+{
+    uint64_t count = 0;
+    for (wme* current = head; current != NIL; current = current->next)
+    {
+        ++count;
+    }
+    return count;
+}
+
+static uint64_t slot_count(slot* head)
+{
+    uint64_t count = 0;
+    for (slot* current = head; current != NIL; current = current->next)
+    {
+        ++count;
+    }
+    return count;
+}
+
+static uint64_t slot_wme_count(slot* head)
+{
+    uint64_t count = 0;
+    for (slot* current = head; current != NIL; current = current->next)
+    {
+        count += wme_count(current->wmes);
+    }
+    return count;
+}
+
+static uint64_t ms_level_count(ms_change* head)
+{
+    uint64_t count = 0;
+    for (ms_change* current = head; current != NIL; current = current->next_in_level)
+    {
+        ++count;
+        if (count > 100000)
+        {
+            break;
+        }
+    }
+    return count;
+}
+
+static uint64_t inst_list_count(instantiation* head)
+{
+    uint64_t count = 0;
+    for (instantiation* current = head; current != NIL; current = current->next)
+    {
+        ++count;
+    }
+    return count;
+}
+
+static void init_trace_dump_rete_wmes(agent* thisAgent, const char* phase)
+{
+    uint64_t total = 0;
+    uint64_t s1_touches = 0;
+    uint64_t j1_touches = 0;
+    uint64_t i4_touches = 0;
+    uint64_t o_touches = 0;
+
+    for (wme* current = thisAgent->all_wmes_in_rete; current != NIL; current = current->rete_next)
+    {
+        ++total;
+        Symbol* syms[3] = { current->id, current->attr, current->value };
+        for (Symbol* sym : syms)
+        {
+            if (!sym || !sym->is_sti())
+            {
+                continue;
+            }
+            if (sym->id->name_letter == 'S' && sym->id->name_number == 1) ++s1_touches;
+            if (sym->id->name_letter == 'J' && sym->id->name_number == 1) ++j1_touches;
+            if (sym->id->name_letter == 'I' && sym->id->name_number == 4) ++i4_touches;
+            if (sym->id->name_letter == 'O') ++o_touches;
+        }
+    }
+
+    std::cerr << "[INIT_TRACE] " << phase << " rete_wmes"
+              << " total=" << total
+              << " touch_S1=" << s1_touches
+              << " touch_J1=" << j1_touches
+              << " touch_I4=" << i4_touches
+              << " touch_O=" << o_touches
+              << std::endl;
+}
+
+static void init_trace_dump_match_set(agent* thisAgent, const char* phase)
+{
+    uint64_t total_instantiations = 0;
+    uint64_t productions_with_inst = 0;
+    uint64_t printed = 0;
+
+    std::cerr << "[INIT_TRACE] " << phase << " match_set";
+    for (int type = 0; type < NUM_PRODUCTION_TYPES; ++type)
+    {
+        for (production* prod = thisAgent->all_productions_of_type[type]; prod != NIL; prod = prod->next)
+        {
+            if (!prod->instantiations)
+            {
+                continue;
+            }
+
+            ++productions_with_inst;
+            uint64_t inst_count = 0;
+            for (instantiation* inst = prod->instantiations; inst != NIL; inst = inst->next)
+            {
+                ++inst_count;
+            }
+            total_instantiations += inst_count;
+
+            if (printed < 6)
+            {
+                std::cerr << " [" << (prod->name ? prod->name->to_string() : "<unnamed>")
+                          << ":" << inst_count << "]";
+                ++printed;
+            }
+        }
+    }
+
+    std::cerr << " total_inst=" << total_instantiations
+              << " prod_with_inst=" << productions_with_inst
+              << std::endl;
+}
+
+static void init_trace_dump_identifier(agent* thisAgent, const char* phase, char letter, uint64_t number)
+{
+    Symbol* id_sym = thisAgent->symbolManager->find_identifier(letter, number);
+    if (id_sym)
+    {
+        std::cerr << "[INIT_TRACE] " << phase << " " << letter << number
+                  << " ref=" << id_sym->reference_count
+                  << " goal=" << static_cast<int>(id_sym->id->isa_goal)
+                  << " op=" << static_cast<int>(id_sym->id->isa_operator)
+                  << " assoc_ol=" << cons_length(id_sym->id->associated_output_links)
+                  << " slots=" << slot_count(id_sym->id->slots)
+                  << " slot_wmes=" << slot_wme_count(id_sym->id->slots)
+                  << " input_wmes=" << wme_count(id_sym->id->input_wmes)
+                  << " impasse_wmes=" << wme_count(id_sym->id->impasse_wmes)
+                  << " link_count=" << id_sym->id->link_count
+                  << " h_goal=" << static_cast<void*>(id_sym->id->higher_goal)
+                  << " l_goal=" << static_cast<void*>(id_sym->id->lower_goal)
+                  << " op_slot=" << static_cast<void*>(id_sym->id->operator_slot)
+                  << " prefs=" << static_cast<void*>(id_sym->id->preferences_from_goal)
+                  << " unknown=" << static_cast<void*>(id_sym->id->unknown_level)
+                  << " rl=" << static_cast<void*>(id_sym->id->rl_info)
+                  << " epmem=" << static_cast<void*>(id_sym->id->epmem_info)
+                  << " smem=" << static_cast<void*>(id_sym->id->smem_info)
+                  << " gds=" << static_cast<void*>(id_sym->id->gds)
+                  << " ms_o=" << static_cast<void*>(id_sym->id->ms_o_assertions)
+                  << " ms_i=" << static_cast<void*>(id_sym->id->ms_i_assertions)
+                  << " ms_r=" << static_cast<void*>(id_sym->id->ms_retractions)
+                  << std::endl;
+    }
+    else
+    {
+        std::cerr << "[INIT_TRACE] " << phase << " " << letter << number << " missing" << std::endl;
+    }
+}
+
+static bool wme_list_contains(wme* head, wme* target)
+{
+    for (wme* current = head; current != NIL; current = current->next)
+    {
+        if (current == target)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+static void purge_detached_rete_wmes(agent* thisAgent)
+{
+    std::vector<wme*> detached_wmes;
+
+    for (wme* current = thisAgent->all_wmes_in_rete; current != NIL; current = current->rete_next)
+    {
+        slot* owner_slot = (current->id && current->attr) ? find_slot(current->id, current->attr) : NIL;
+        bool has_owner = false;
+
+        if (owner_slot)
+        {
+            has_owner = current->acceptable
+                ? wme_list_contains(owner_slot->acceptable_preference_wmes, current)
+                : wme_list_contains(owner_slot->wmes, current);
+        }
+
+        if (!has_owner && current->id && current->id->is_sti())
+        {
+            has_owner = wme_list_contains(current->id->id->impasse_wmes, current) ||
+                        wme_list_contains(current->id->id->input_wmes, current);
+        }
+
+        if (!has_owner)
+        {
+            detached_wmes.push_back(current);
+        }
+    }
+
+    for (wme* detached : detached_wmes)
+    {
+        remove_wme_from_wm(thisAgent, detached);
+    }
+
+    if (!detached_wmes.empty())
+    {
+        do_buffered_wm_and_ownership_changes(thisAgent);
+    }
+}
 
 /* ===================================================================
 
@@ -407,6 +648,30 @@ void destroy_soar_agent(agent* delete_agent)
 
 void reinitialize_agent(agent* thisAgent)
 {
+    bool trace_init = init_trace_enabled();
+    uint64_t trace_init_number = 0;
+    if (trace_init)
+    {
+        static uint64_t init_trace_counter = 0;
+        trace_init_number = ++init_trace_counter;
+        std::cerr << "[INIT_TRACE] begin #" << trace_init_number
+                  << " d_cycle=" << thisAgent->d_cycle_count
+                  << " e_cycle=" << thisAgent->e_cycle_count
+                  << " active_level=" << thisAgent->active_level
+                  << " top_goal=" << static_cast<void*>(thisAgent->top_goal)
+                  << " bottom_goal=" << static_cast<void*>(thisAgent->bottom_goal)
+                  << " top_state=" << static_cast<void*>(thisAgent->top_state)
+                  << " prev_top_state=" << static_cast<void*>(thisAgent->prev_top_state)
+                  << " io_header=" << static_cast<void*>(thisAgent->io_header)
+                  << " io_header_input=" << static_cast<void*>(thisAgent->io_header_input)
+                  << " io_header_output=" << static_cast<void*>(thisAgent->io_header_output)
+                  << std::endl;
+            init_trace_dump_identifier(thisAgent, "begin", 'S', 1);
+            init_trace_dump_identifier(thisAgent, "begin", 'J', 1);
+            init_trace_dump_identifier(thisAgent, "begin", 'I', 4);
+            init_trace_dump_identifier(thisAgent, "begin", 'O', 2);
+    }
+
     /* Clean up explanation-based chunking, episodic and semantic memory data structures */
     epmem_reinit(thisAgent);
     thisAgent->SMem->reinit();
@@ -437,13 +702,71 @@ void reinitialize_agent(agent* thisAgent)
     thisAgent->FIRING_TYPE = IE_PRODS;
     do_preference_phase(thisAgent);
 
+    if (thisAgent->wmes_to_add || thisAgent->wmes_to_remove)
+    {
+        do_buffered_wm_and_ownership_changes(thisAgent);
+    }
+
+    /* Snapshot restore can leave orphan WMEs in rete that are not linked to
+     * any slot/input/impasse owner list, so normal goal-stack teardown misses
+     * them. Purge any detached WMEs before resetting identifier tables. */
+    purge_detached_rete_wmes(thisAgent);
+
     /* It's now safe to clear out explanation memory */
     thisAgent->explanationMemory->re_init();
 
     /* Reset Soar identifier hash table and counters for WMEs, SMem and Soar IDs.
      * Note:  reset_hash_table() is where refcount leaks in identifiers are detected. */
     reset_wme_timetags(thisAgent);
+    if (trace_init)
+    {
+        std::cerr << "[INIT_TRACE] pre-reset #" << trace_init_number
+                  << " d_cycle=" << thisAgent->d_cycle_count
+                  << " e_cycle=" << thisAgent->e_cycle_count
+                  << " top_goal=" << static_cast<void*>(thisAgent->top_goal)
+                  << " bottom_goal=" << static_cast<void*>(thisAgent->bottom_goal)
+                  << " top_state=" << static_cast<void*>(thisAgent->top_state)
+                  << " prev_top_state=" << static_cast<void*>(thisAgent->prev_top_state)
+                  << " io_header=" << static_cast<void*>(thisAgent->io_header)
+                  << " io_header_input=" << static_cast<void*>(thisAgent->io_header_input)
+                  << " io_header_output=" << static_cast<void*>(thisAgent->io_header_output)
+                  << " output_links=" << output_link_count(thisAgent)
+                  << " wmes_to_add=" << cons_length(thisAgent->wmes_to_add)
+                  << " wmes_to_remove=" << cons_length(thisAgent->wmes_to_remove)
+                  << " ms_o=" << ms_level_count(thisAgent->ms_o_assertions)
+                  << " ms_i=" << ms_level_count(thisAgent->ms_i_assertions)
+                  << " postponed=" << ms_level_count(thisAgent->postponed_assertions)
+                  << " nil_retract=" << ms_level_count(thisAgent->nil_goal_retractions)
+                  << " nci=" << inst_list_count(thisAgent->newly_created_instantiations)
+                  << " ndi=" << thisAgent->newly_deleted_instantiations.size()
+                  << std::endl;
+        init_trace_dump_identifier(thisAgent, "pre-reset", 'S', 1);
+        init_trace_dump_identifier(thisAgent, "pre-reset", 'J', 1);
+        init_trace_dump_identifier(thisAgent, "pre-reset", 'I', 4);
+        init_trace_dump_identifier(thisAgent, "pre-reset", 'O', 2);
+        init_trace_dump_match_set(thisAgent, "pre-reset");
+        init_trace_dump_rete_wmes(thisAgent, "pre-reset");
+    }
     thisAgent->symbolManager->reset_hash_table(MP_identifier);
+    if (trace_init)
+    {
+        std::cerr << "[INIT_TRACE] post-reset #" << trace_init_number
+                  << " d_cycle=" << thisAgent->d_cycle_count
+                  << " e_cycle=" << thisAgent->e_cycle_count
+                  << " top_goal=" << static_cast<void*>(thisAgent->top_goal)
+                  << " bottom_goal=" << static_cast<void*>(thisAgent->bottom_goal)
+                  << " top_state=" << static_cast<void*>(thisAgent->top_state)
+                  << " prev_top_state=" << static_cast<void*>(thisAgent->prev_top_state)
+                  << " io_header=" << static_cast<void*>(thisAgent->io_header)
+                  << " io_header_input=" << static_cast<void*>(thisAgent->io_header_input)
+                  << " io_header_output=" << static_cast<void*>(thisAgent->io_header_output)
+                  << " output_links=" << output_link_count(thisAgent)
+                  << std::endl;
+        init_trace_dump_identifier(thisAgent, "post-reset", 'S', 1);
+        init_trace_dump_identifier(thisAgent, "post-reset", 'J', 1);
+        init_trace_dump_identifier(thisAgent, "post-reset", 'I', 4);
+        init_trace_dump_identifier(thisAgent, "post-reset", 'O', 2);
+    }
     thisAgent->symbolManager->reset_id_counters();
     if (thisAgent->SMem->connected()) thisAgent->SMem->reset_id_counters();
 

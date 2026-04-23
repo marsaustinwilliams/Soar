@@ -2368,7 +2368,7 @@ void remove_existing_context_and_descendents(agent* thisAgent, Symbol* goal)
 
     if (goal != thisAgent->top_goal)
     {
-        if (thisAgent->explanationBasedChunker->ebc_settings[SETTING_EBC_LEARNING_ON] && thisAgent->explanationMemory->is_any_enabled())
+        if (thisAgent->explanationBasedChunker->ebc_settings[SETTING_EBC_LEARNING_ON])
         {
             thisAgent->explanationMemory->clear_identity_sets_for_goal(goal);
         }
@@ -2668,6 +2668,7 @@ byte type_of_existing_impasse(agent* thisAgent, Symbol* goal)
             msg[BUFFER_MSG_SIZE - 1] = 0; /* ensure null termination */
             abort_with_fatal_error(thisAgent, msg);
         }
+
     strncpy(msg, "decide.c: Internal error: couldn't find type of existing impasse.\n", BUFFER_MSG_SIZE);
     msg[BUFFER_MSG_SIZE - 1] = 0; /* ensure null termination */
     abort_with_fatal_error(thisAgent, msg);

@@ -88,6 +88,10 @@ EXPORT CommandLineInterface::CommandLineInterface()
     m_Parser.AddCommand(new cli::TraceCommand(*this));
     m_Parser.AddCommand(new cli::WMCommand(*this));
     m_Parser.AddCommand(new cli::SVSCommand(*this));
+    m_Parser.AddCommand(new cli::SaveAgentStateCommand(*this));
+    m_Parser.AddCommand(new cli::LoadAgentStateCommand(*this));
+    m_Parser.AddCommand(new cli::SaveKernelStateCommand(*this));
+    m_Parser.AddCommand(new cli::LoadKernelStateCommand(*this));
 
     GetCurrentWorkingDirectory(m_HomeDirectory);
 

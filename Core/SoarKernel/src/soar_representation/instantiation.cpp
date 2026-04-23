@@ -39,6 +39,43 @@
 
 using namespace soar_TraceNames;
 
+namespace
+{
+bool inst_teardown_trace_enabled()
+{
+    static const bool enabled = (std::getenv("SOAR_DEBUG_INST_TEARDOWN_TRACE") != nullptr);
+    return enabled;
+}
+
+void inst_teardown_dump_ids(agent* thisAgent, const char* phase, const char* prod_name)
+{
+    if (!inst_teardown_trace_enabled())
+    {
+        return;
+    }
+
+    std::cerr << "[INST_TEARDOWN] " << phase
+              << " prod=" << (prod_name ? prod_name : "<null>");
+
+    Symbol* s1 = thisAgent->symbolManager->find_identifier('S', 1);
+    Symbol* j1 = thisAgent->symbolManager->find_identifier('J', 1);
+    Symbol* i4 = thisAgent->symbolManager->find_identifier('I', 4);
+    if (s1) std::cerr << " S1=" << s1->reference_count;
+    if (j1) std::cerr << " J1=" << j1->reference_count;
+    if (i4) std::cerr << " I4=" << i4->reference_count;
+
+    for (uint64_t on = 1; on <= 6; ++on)
+    {
+        Symbol* o = thisAgent->symbolManager->find_identifier('O', on);
+        if (o)
+        {
+            std::cerr << " O" << on << "=" << o->reference_count;
+        }
+    }
+    std::cerr << std::endl;
+}
+}
+
 void init_instantiation_pool(agent* thisAgent)
 {
     thisAgent->memoryManager->init_memory_pool(MP_instantiation, sizeof(instantiation), "instantiation");
@@ -1348,6 +1385,8 @@ void deallocate_instantiation(agent* thisAgent, instantiation*& inst)
         instantiation* lDelInst = *riter;
         lProdName = lDelInst->prod_name ? lDelInst->prod_name->sc->name : NULL;
 
+        inst_teardown_dump_ids(thisAgent, "before", lProdName);
+
         deallocate_condition_list(thisAgent, lDelInst->top_of_instantiated_conditions);
 
         /* Clean up operator selection knowledge */
@@ -1396,6 +1435,8 @@ void deallocate_instantiation(agent* thisAgent, instantiation*& inst)
                 }
             }
         }
+
+        inst_teardown_dump_ids(thisAgent, "after", lProdName);
 
         thisAgent->memoryManager->free_with_pool(MP_instantiation, lDelInst);
     }

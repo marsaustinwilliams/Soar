@@ -38,6 +38,20 @@ def CheckSWIG(env):
 	return False
 
 
+def GenerateProtobufSource(target, source, env):
+	out_dir = os.path.dirname(target[0].abspath)
+	if not os.path.isdir(out_dir):
+		os.makedirs(out_dir)
+
+	cmd = [
+		env['PROTOC'],
+		'--proto_path=' + source[0].dir.abspath,
+		'--cpp_out=' + out_dir,
+		source[0].abspath,
+	]
+	return sub.call(cmd)
+
+
 kernel_env = env.Clone()
 
 # Windows DLLs need to get linked to dependencies, whereas Linux and Mac shared objects do not
@@ -45,6 +59,8 @@ if os.name == 'nt':
 	kernel_env['LIBS'] = ['advapi32']
 else:
 	kernel_env['LIBS'] = []
+
+kernel_env.Append(LIBS=['protobuf'])
 
 if sys.platform == 'darwin':
 	install_name = os.path.join('@loader_path', env['LIBPREFIX'] + 'Soar' + env['SHLIBSUFFIX'])
@@ -68,10 +84,28 @@ srcs = [
 # 	('CLI/CommandLineInterface.cxx',    Glob('CLI/src/*.cpp')),           		# CLI
 ]
 
+protoc = env.WhereIs('protoc')
+if not protoc:
+	print('protoc not found. Install protobuf-compiler to build agent_state serialization.')
+	Exit(1)
+
+env['PROTOC'] = protoc
+kernel_env['PROTOC'] = protoc
+
+proto_src = File('#Core/SoarKernel/proto/agent_state.proto')
+pb_cc = File('#Core/SoarKernel/src/soar_representation/agent_state.pb.cc')
+pb_h = File('#Core/SoarKernel/src/soar_representation/agent_state.pb.h')
+proto_targets = env.Command([pb_cc, pb_h], proto_src,
+	Action(GenerateProtobufSource, cmdstr='Generating $TARGET from $SOURCE'))
+
+# Ensure the generated protobuf header exists before compiling kernel sources that include it.
+env.Depends([File('SoarKernel/SoarKernel.cxx'), File('SoarKernel/src/soar_representation/agent_state_serializer.cpp')], pb_h)
+
 if env['NO_SCU_KERNEL']:
 	srcs.append([Glob('SoarKernel/src/*/*.cpp'),	Glob('SoarKernel/src/*/*.cpp')])
 else:
 	srcs.append(['SoarKernel/SoarKernel.cxx',		Glob('SoarKernel/src/*/*.cpp')])
+	srcs.append(['SoarKernel/src/soar_representation/agent_state.pb.cc',	'SoarKernel/src/soar_representation/agent_state.pb.cc'])
 if env['NO_SCU_CLI']:
 	srcs.append([Glob('CLI/src/*.cpp'),				Glob('CLI/src/*.cpp')])
 else:

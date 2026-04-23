@@ -148,6 +148,9 @@ typedef struct EXPORT agent_struct
     /* --- the RHS action (halt) sets this true --- */
     bool                system_halted;
 
+    /* --- suppress callbacks during state loading to avoid notifications --- */
+    bool                suppress_callbacks_during_load;
+
     /* --- list of productions whose firings are being traced --- */
     cons*             productions_being_traced;
 
@@ -556,6 +559,7 @@ void    init_soar_agent(agent* thisAgent);
 agent*  create_soar_agent(char* name);
 void    destroy_soar_agent(agent* soar_agent);
 void    reinitialize_agent(agent* thisAgent);
+void    purge_restored_rete_seed_wm(agent* thisAgent);
 
 #endif
 

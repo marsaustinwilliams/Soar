@@ -124,6 +124,10 @@ namespace cli
             bool DoRL(const char pOp = 0, const std::string* pAttr = 0, const std::string* pVal = 0);
             bool DoRun(const RunBitset& options, int count = 0, eRunInterleaveMode interleave = RUN_INTERLEAVE_DEFAULT);
             bool DoSave(std::vector<std::string>& argv, const std::string& pCmd);
+            bool DoSaveAgentState(const std::string& filename);
+            bool DoLoadAgentState(const std::string& filename);
+            bool DoSaveKernelState(const std::string& filename);
+            bool DoLoadKernelState(const std::string& filename);
             bool DoSMem(const char pOp = 0, const std::string* pArg1 = 0, const std::string* pArg2 = 0, const std::string* pArg3 = 0);
             bool DoSoar(const char pOp = 0, const std::string* pArg1 = 0, const std::string* pArg2 = 0, const std::string* pArg3 = 0);
             bool DoSP(const std::string& production);

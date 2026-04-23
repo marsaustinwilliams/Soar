@@ -132,73 +132,11 @@ bool KernelSML::HandleCreateAgent(AgentSML* pAgentSML, char const* pCommandName,
         return InvalidArg(pConnection, pResponse, pCommandName, "Agent name missing") ;
     }
 
-    agent* pSoarAgent = create_soar_agent(const_cast< char* >(pName));
-
-    pAgentSML = new AgentSML(this, pSoarAgent) ;
-
-    // Update our maps
-    m_KernelAgentMap[ pSoarAgent ] = pAgentSML ;
-    m_AgentMap[ pAgentSML->GetName() ] = pAgentSML ;
-
-    pAgentSML->InitListeners() ;    // This must happen before the soar agent is initialized
-
-    pAgentSML->Init() ;
-
-    // Notify listeners that there is a new agent
-    this->FireAgentEvent(pAgentSML, smlEVENT_AFTER_AGENT_CREATED) ;
-
-    xml_invoke_callback(pAgentSML->GetSoarAgent());
-
-    // Register for output from this agent
-
-    // Mark the agent's status as just having been created for all connections
-    // Note--agent status for connections just refers to the last agent created, i.e. this one.
-    m_pConnectionManager->SetAgentStatus(sml_Names::kStatusCreated) ;
-
-    // We also need to listen to input events so we can pump waiting sockets and get interrupt messages etc.
-    // moved to sml_InputListener.cpp
-
-    //pAgentSML->m_inputlink->GetInputLinkMemory()->m_RemoveWmeCallback = RemoveInputWMERecordsCallback;
-
-    if (this->m_pRunScheduler->IsRunning())
+    pAgentSML = CreateAgentSML(pName, true, true);
+    if (!pAgentSML)
     {
-        // bug 952: if soar is running, the agent should start running
-
-        // FIXME: this is duplicated code from the following functions:
-        // InitializeRunCounters():
-        pAgentSML->ResetLastOutputCount() ;
-        uint64_t count = pAgentSML->GetRunCounter(this->m_pRunScheduler->GetCurrentRunStepSize()) ;
-        pAgentSML->SetInitialRunCount(count) ;
-        pAgentSML->ResetLocalRunCounters() ;
-        // InitializeUpdateWorldEvents():
-        pAgentSML->SetCompletedOutputPhase(false) ;
-        pAgentSML->SetGeneratedOutput(false) ;
-        pAgentSML->SetInitialOutputCount(pAgentSML->GetNumOutputsGenerated()) ;
-        pAgentSML->GetAgentRunCallback()->RegisterWithKernel(smlEVENT_AFTER_OUTPUT_PHASE) ;
-
-        this->m_pRunScheduler->ScheduleAgentToRun(pAgentSML, true);
+        return false;
     }
-
-    if (!Soar_Instance::Get_Soar_Instance().was_run_from_unit_test())
-    {
-        /* -- Load user settings for this agent.  Checks current working
-         *    directory, dll path and the SOAR_HOME environment variable -- */
-        std::string lFileName("settings.soar");
-        std::string directory = searchForFile(lFileName);
-        if (!directory.empty())
-        {
-            directory.insert(0, "source ");
-            std::string lResult = pAgentSML->ExecuteCommandLine(directory.c_str());
-        } else {
-            /* This doesn't seem to actually print the error.  Soar simply prints
-             * an unknown error occurred. Commenting out for now. */
-            //pConnection->AddErrorToSMLResponse(pResponse, "Could not find settings.soar file.", 1);
-
-            /* Returning true.  Otherwise, Soar will exit if the file could not be found. */
-            return true;
-        }
-    }
-    pSoarAgent->outputManager->cache_output_modes();
 
     // Return true if we got an agent constructed.
     return true ;
@@ -529,24 +467,7 @@ bool KernelSML::HandleGetConnections(AgentSML* /*pAgentSML*/, char const* /*pCom
 
 bool KernelSML::HandleDestroyAgent(AgentSML* pAgentSML, char const* /*pCommandName*/, Connection* /*pConnection*/, AnalyzeXML* /*pIncoming*/, soarxml::ElementXML* /*pResponse*/)
 {
-    if (!pAgentSML)
-    {
-        return false ;
-    }
-
-    FireAgentEvent(pAgentSML, smlEVENT_BEFORE_AGENT_DESTROYED);
-
-    // Close log
-    if (m_CommandLineInterface.IsLogOpen())
-    {
-        m_CommandLineInterface.DoCommand(0, pAgentSML, "output log --close", false, true, 0) ;
-    }
-
-    // Release any wmes or other objects we're keeping
-    pAgentSML->DeleteSelf() ;
-    pAgentSML = NULL ;  // At this point the pointer is invalid so clear it.
-
-    return true ;
+    return DestroyAgentSML(pAgentSML) ;
 }
 
 // Shutdown is an irrevocable request to delete all agents and prepare for kernel deletion.

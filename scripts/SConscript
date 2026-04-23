@@ -10,10 +10,13 @@ settings_install = env.Install(env['OUT_DIR'], 'settings.soar')
 all_script_targets = settings_install
 if os.name == 'nt':
     jd_install = env.Install(env['OUT_DIR'], 'SoarJavaDebugger.bat')
+    jd_toh_fast_install = env.Install(env['OUT_DIR'], 'SoarJavaDebugger_TowersOfHanoiFast.bat')
 else:
     jd_install = env.Install(env['OUT_DIR'], 'SoarJavaDebugger.sh')
+    jd_toh_fast_install = env.Install(env['OUT_DIR'], 'SoarJavaDebugger_TowersOfHanoiFast.sh')
 
 all_script_targets += jd_install
+all_script_targets += jd_toh_fast_install
 
 env.Alias('scripts', all_script_targets)
 

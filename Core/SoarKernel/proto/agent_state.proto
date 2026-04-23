@@ -1,0 +1,342 @@
+syntax = "proto3";
+
+package soar.kernel;
+
+option cc_enable_arenas = false;
+
+enum SymbolType {
+  SYMBOL_TYPE_UNKNOWN = 0;
+  SYMBOL_TYPE_VARIABLE = 1;
+  SYMBOL_TYPE_IDENTIFIER = 2;
+  SYMBOL_TYPE_STRING = 3;
+  SYMBOL_TYPE_INT = 4;
+  SYMBOL_TYPE_FLOAT = 5;
+}
+
+enum PreferenceType {
+  ACCEPTABLE_PREFERENCE_TYPE = 0;
+  REQUIRE_PREFERENCE_TYPE = 1;
+  REJECT_PREFERENCE_TYPE = 2;
+  PROHIBIT_PREFERENCE_TYPE = 3;
+  RECONSIDER_PREFERENCE_TYPE = 4;
+  UNARY_INDIFFERENT_PREFERENCE_TYPE = 5;
+  UNARY_PARALLEL_PREFERENCE_TYPE = 6;
+  BEST_PREFERENCE_TYPE = 7;
+  WORST_PREFERENCE_TYPE = 8;
+  BINARY_INDIFFERENT_PREFERENCE_TYPE = 9;
+  BINARY_PARALLEL_PREFERENCE_TYPE = 10;
+  BETTER_PREFERENCE_TYPE = 11;
+  WORSE_PREFERENCE_TYPE = 12;
+  NUMERIC_INDIFFERENT_PREFERENCE_TYPE = 13;
+  NUM_PREFERENCE_TYPES = 14;
+}
+
+enum WmeOwnerType {
+  WME_OWNER_UNKNOWN = 0;
+  WME_OWNER_SLOT = 1;
+  WME_OWNER_ACCEPTABLE = 2;
+  WME_OWNER_IMPASSE = 3;
+  WME_OWNER_INPUT = 4;
+}
+
+message IdentifierSymbol {
+  uint32 name_letter = 1;
+  uint64 name_number = 2;
+  int32 level = 3;
+  bool isa_goal = 4;
+  bool isa_operator = 5;
+  bool isa_impasse = 6;
+  int32 impasse_type = 7;
+}
+
+message SymbolEntry {
+  uint64 symbol_id = 1;
+  SymbolType type = 2;
+  string string_value = 3;
+  int64 int_value = 4;
+  double float_value = 5;
+  IdentifierSymbol identifier = 6;
+  string variable_name = 7;
+  uint64 variable_gensym_number = 8;
+}
+
+message PreferenceEntry {
+  PreferenceType type = 1;
+  bool o_supported = 2;
+  bool in_tm = 3;
+  uint64 id = 4;
+  uint64 attr = 5;
+  uint64 value = 6;
+  uint64 referent = 7;
+  int32 match_goal_level = 8;
+  uint64 inst_identity_id = 9;
+  uint64 inst_identity_attr = 10;
+  uint64 inst_identity_value = 11;
+  uint64 inst_identity_referent = 12;
+  uint64 identity_id = 13;
+  uint64 identity_attr = 14;
+  uint64 identity_value = 15;
+  uint64 identity_referent = 16;
+}
+
+message WmeEntry {
+  uint64 wme_id = 1;
+  uint64 id_symbol = 2;
+  uint64 attr_symbol = 3;
+  uint64 value_symbol = 4;
+  bool acceptable = 5;
+  bool output_link = 6;
+  uint64 timetag = 7;
+  PreferenceEntry preference = 8;
+  WmeOwnerType owner_type = 9;
+  uint64 local_singleton_id_identity = 10;
+  uint64 local_singleton_value_identity = 11;
+  bool has_wma_decay = 12;
+  bool wma_just_removed = 13;
+  bool wma_just_created = 14;
+  uint64 wma_num_references = 15;
+  uint64 wma_forget_cycle = 16;
+  uint64 wma_history_references = 17;
+  uint64 wma_total_references = 18;
+  uint64 wma_first_reference = 19;
+  uint32 wma_next_p = 20;
+  uint32 wma_history_ct = 21;
+  repeated uint64 wma_access_cycles = 22;
+  repeated uint64 wma_access_references = 23;
+  // Debug provenance IDs. These are advisory and not used to drive restore logic.
+  uint64 creating_instantiation_id = 24;
+  uint64 supporting_instantiation_id = 25;
+}
+
+message InstantiatedConditionEntry {
+  WmeEntry wme = 1;
+  uint64 id_inst_identity = 2;
+  uint64 attr_inst_identity = 3;
+  uint64 value_inst_identity = 4;
+  uint64 id_identity = 5;
+  uint64 attr_identity = 6;
+  uint64 value_identity = 7;
+  PreferenceEntry trace_preference = 8;
+}
+
+message AgentSettings {
+  int32 current_phase = 1;
+  bool stop_soar = 2;
+  bool system_halted = 3;
+  string reason_for_stopping = 4;
+  uint64 go_number = 5;
+  uint64 go_slot_attr_symbol = 6;
+  int32 go_slot_level = 7;
+  int32 go_type = 8;
+  int32 input_period = 9;
+  bool input_cycle_flag = 10;
+  uint64 current_wme_timetag = 11;
+  uint64 bottom_goal_symbol = 12;
+  uint64 top_goal_symbol = 13;
+  uint64 top_state_symbol = 14;
+  repeated int64 trace_settings = 15;
+  string name_of_production_being_reordered = 16;
+}
+
+message TimerSnapshot {
+  uint64 t1 = 1;
+  uint64 elapsed = 2;
+  double raw_per_usec = 3;
+  bool running = 4;
+}
+
+message TimerAccumulatorSnapshot {
+  uint64 total = 1;
+}
+
+message AgentCounters {
+  uint64 cumulative_wm_size = 1;
+  uint64 num_wm_sizes_accumulated = 2;
+  uint64 max_wm_size = 3;
+  uint64 wme_addition_count = 4;
+  uint64 wme_removal_count = 5;
+  uint64 init_count = 6;
+  uint64 d_cycle_count = 7;
+  uint64 e_cycle_count = 8;
+  uint64 e_cycles_this_d_cycle = 9;
+  uint64 num_existing_wmes = 10;
+  uint64 production_firing_count = 11;
+  uint64 start_dc_production_firing_count = 12;
+  uint64 max_dc_production_firing_count_value = 13;
+  uint64 max_dc_production_firing_count_cycle = 14;
+  uint64 d_cycle_last_output = 15;
+  uint64 decide_phases_count = 16;
+  uint64 run_phase_count = 17;
+  uint64 run_elaboration_count = 18;
+  uint64 run_last_output_count = 19;
+  uint64 run_generated_output_count = 20;
+  uint64 pe_cycle_count = 21;
+  uint64 pe_cycles_this_d_cycle = 22;
+  uint64 inner_e_cycle_count = 23;
+  uint64 current_retesave_amindex = 24;
+  uint64 reteload_num_ams = 25;
+  uint64 current_retesave_symindex = 26;
+  uint64 reteload_num_syms = 27;
+  uint64 alpha_mem_id_counter = 28;
+  uint64 beta_node_id_counter = 29;
+  uint64 current_tc_number = 30;
+  TimerSnapshot timers_cpu = 31;
+  TimerSnapshot timers_kernel = 32;
+  TimerSnapshot timers_phase = 33;
+  TimerAccumulatorSnapshot timers_total_cpu_time = 34;
+  TimerAccumulatorSnapshot timers_total_kernel_time = 35;
+  repeated uint64 timers_decision_cycle_phase_usec = 36;
+  uint64 timers_input_function_cpu_time_usec = 37;
+  uint64 timers_output_function_cpu_time_usec = 38;
+  repeated uint64 callback_timers_usec = 39;
+  bool serializer_runtime_parity_v1 = 40;
+  uint64 tf_printing_tc = 41;
+  uint64 output_link_tc_num = 42;
+  repeated uint64 timers_monitors_cpu_time_usec = 43;
+  uint64 last_derived_kernel_time_usec = 44;
+  uint64 max_dc_time_usec = 45;
+  uint64 max_dc_time_cycle = 46;
+  double max_dc_epmem_time_sec = 47;
+  double total_dc_epmem_time_sec = 48;
+  uint64 max_dc_epmem_time_cycle = 49;
+  double max_dc_smem_time_sec = 50;
+  double total_dc_smem_time_sec = 51;
+  uint64 max_dc_smem_time_cycle = 52;
+  uint64 timers_snapshot_raw_time = 53;
+  uint64 start_dc_wme_addition_count = 54;
+  uint64 start_dc_wme_removal_count = 55;
+  uint64 max_dc_wm_changes_value = 56;
+  uint64 max_dc_wm_changes_cycle = 57;
+}
+
+message ProductionFiringCount {
+  string production_name = 1;
+  uint64 firing_count = 2;
+}
+
+message MatchInstantiation {
+  string production_name = 1;
+  int32 match_goal_level = 2;
+  repeated uint64 timetags = 3;
+  uint64 instantiation_id = 13;
+  repeated PreferenceEntry preferences_generated = 4;
+  bool in_ms = 5;
+  repeated PreferenceEntry osk_proposal_prefs = 6;
+  uint64 osk_proposal_slot_id = 7;
+  uint64 osk_proposal_slot_attr = 8;
+  repeated uint64 instantiated_condition_timetags = 9;
+  repeated WmeEntry instantiated_condition_wmes = 10;
+  repeated PreferenceEntry osk_prefs = 11;
+  repeated InstantiatedConditionEntry instantiated_conditions = 12;
+}
+
+message ChunkingRuntimeState {
+  repeated uint64 chunky_problem_spaces = 1;
+  repeated uint64 chunk_free_problem_spaces = 2;
+  repeated uint64 non_bottom_up_goals = 3;
+  uint64 identity_counter = 4;
+  uint64 inst_identity_counter = 5;
+  repeated bool ebc_settings = 6;
+  uint64 max_chunks = 7;
+  uint64 max_dupes = 8;
+  repeated SlotOskState slot_osk_prefs = 9;
+  repeated InstIdentityMapEntry inst_identity_map = 10;
+}
+
+message InstIdentityMapEntry {
+  uint64 inst_identity = 1;
+  uint64 identity_id = 2;
+}
+
+message SlotOskState {
+  uint64 id_symbol = 1;
+  uint64 attr_symbol = 2;
+  repeated PreferenceEntry preferences = 3;
+}
+
+message ActiveGoalRuntimeState {
+  uint64 active_goal = 1;
+  uint64 previous_active_goal = 2;
+  uint64 highest_active_goal = 3;
+  int32 active_level = 4;
+  int32 previous_active_level = 5;
+  int32 highest_active_level = 6;
+  int32 change_level = 7;
+  int32 next_change_level = 8;
+}
+
+message GoalSavedFiringTypeState {
+  uint64 goal_symbol = 1;
+  int32 saved_firing_type = 2;
+}
+
+message PendingIeAssertion {
+  uint64 production_name_symbol = 1;
+  int32 match_goal_level = 2;
+  repeated uint64 timetags = 3;
+}
+
+message ExplanationIdentityEntry {
+  uint64 identity_id = 1;
+  uint64 joined_identity_id = 2;
+  uint64 chunk_inst_identity = 3;
+  bool literalized = 4;
+}
+
+message GoalIdentitySetState {
+  uint64 goal_symbol = 1;
+  repeated ExplanationIdentityEntry identities = 2;
+}
+
+enum ProductionRhsField {
+  PRODUCTION_RHS_FIELD_UNKNOWN = 0;
+  PRODUCTION_RHS_FIELD_ID = 1;
+  PRODUCTION_RHS_FIELD_ATTR = 2;
+  PRODUCTION_RHS_FIELD_VALUE = 3;
+  PRODUCTION_RHS_FIELD_REFERENT = 4;
+}
+
+message ProductionRhsIdentifierPatch {
+  string production_name = 1;
+  uint64 action_index = 2;
+  ProductionRhsField field = 3;
+  uint64 symbol_id = 4;
+}
+
+message AgentState {
+  string agent_name = 1;
+  AgentSettings settings = 2;
+  AgentCounters counters = 3;
+  repeated SymbolEntry symbols = 4;
+  repeated WmeEntry active_wmes = 5;
+  repeated WmeEntry buffered_add_wmes = 6;
+  repeated WmeEntry buffered_remove_wmes = 7;
+  bool smem_enabled = 8;
+  string smem_export_text = 9;
+  bytes rete_binary = 10;
+  repeated ProductionFiringCount production_firing_counts = 11;
+  repeated ProductionRhsIdentifierPatch production_rhs_identifier_patches = 12;
+  repeated MatchInstantiation live_match_instantiations = 13;
+  ChunkingRuntimeState chunking_runtime = 14;
+  ActiveGoalRuntimeState active_goal_runtime = 15;
+  repeated PendingIeAssertion pending_ie_assertions = 16;
+  repeated GoalIdentitySetState goal_identity_sets = 17;
+  repeated GoalSavedFiringTypeState goal_saved_firing_types = 18;
+  repeated PendingIeAssertion pending_pe_assertions = 19;
+  repeated uint32 rng_state = 20;
+}
+
+message KernelSettings {
+  bool suppress_system_start = 1;
+  bool suppress_system_stop = 2;
+  bool require_system_stop = 3;
+  bool echo_commands = 4;
+  int32 interrupt_check_rate = 5;
+  int32 stop_point = 6;
+  int32 stop_before_phase = 7;
+}
+
+message KernelState {
+  KernelSettings settings = 1;
+  repeated AgentState agents = 2;
+}

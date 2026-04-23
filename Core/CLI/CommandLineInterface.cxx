@@ -1,4 +1,5 @@
 #include "src/cli_alias.cpp"
+#include "src/cli_agent_state.cpp"
 #include "src/cli_chunk.cpp"
 #include "src/cli_debug.cpp"
 #include "src/cli_decide.cpp"

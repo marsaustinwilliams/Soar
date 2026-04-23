@@ -396,6 +396,7 @@ production* make_production(agent*          thisAgent,
     }
 
     thisAgent->memoryManager->allocate_with_pool(MP_production, &p);
+    *p = {};
     p->name = name;
     p->original_rule_name = make_memory_block_for_string(thisAgent, original_rule_name);
     p->naming_depth = 0;
@@ -454,6 +455,22 @@ production* make_production(agent*          thisAgent,
 void deallocate_production(agent* thisAgent, production* prod)
 {
     if (!prod) return;
+
+    /* Production lifetime is reference-counted, but production memory ownership is the
+     * per-type DLL in all_productions_of_type[]. If a production reaches deallocation
+     * while still linked there, unlink it now rather than leaving a stale list pointer
+     * behind for later teardown. */
+    if ((prod->type < NUM_PRODUCTION_TYPES) &&
+        ((thisAgent->all_productions_of_type[prod->type] == prod) || prod->next || prod->prev))
+    {
+        remove_from_dll(thisAgent->all_productions_of_type[prod->type], prod, next, prev);
+        if (thisAgent->num_productions_of_type[prod->type] > 0)
+        {
+            thisAgent->num_productions_of_type[prod->type]--;
+        }
+        prod->next = prod->prev = NIL;
+    }
+
     if (prod->instantiations)
     {
         /* Soar used to abort here, but I think this can easily happen with the
@@ -471,6 +488,11 @@ void deallocate_production(agent* thisAgent, production* prod)
         {
             lInst->prod = NULL;
         }
+    }
+
+    if (prod->name && prod->name->is_string() && (prod->name->sc->production == prod))
+    {
+        prod->name->sc->production = NIL;
     }
 
     deallocate_action_list(thisAgent, prod->action_list);

@@ -2,14 +2,16 @@ cmake_minimum_required(VERSION 3.22)
 project(test_soar
     LANGUAGES CXX)
 
-file(GLOB TEST_SOURCES
+find_package(Python3 COMPONENTS Interpreter)
+
+file(GLOB TEST_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/TestHarness/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/SoarHelpers/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/SoarUnitTests/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/SoarUnitTests/wma/*.cpp
 )
 
-file(GLOB TEST_HEADERS
+file(GLOB TEST_HEADERS CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/TestHarness/*.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/SoarHelpers/*.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/SoarUnitTests/*.hpp
@@ -43,7 +45,7 @@ file(COPY ${CMAKE_SOURCE_DIR}/UnitTests/SoarTestAgents DESTINATION ${CMAKE_BINAR
 if(BUILD_TESTING)
     # Add CI tests only if TEST_CI_ENABLED is enabled (default ON if not specified)
     if(NOT DEFINED TEST_CI_ENABLED OR TEST_CI_ENABLED)
-        add_test(NAME test_ci COMMAND test_soar -e PRIMS_Sanity1 -e PRIMS_Sanity2 -f testLoadLibrary -f testSmemArithmetic -f testHamilton -E SvsTests)
+        add_test(NAME test_ci COMMAND test_soar -e PRIMS_Sanity1 -e PRIMS_Sanity2 -f testLoadLibrary -f testSmemArithmetic -f testHamilton -E SvsTests -E SnapshotProgressionTests)
     endif()
 
     if(SVS)
@@ -64,6 +66,17 @@ if(BUILD_TESTING)
         # Set environment to use build directory instead of install directory
         set_tests_properties(test_python_sml PROPERTIES
             ENVIRONMENT "PYTHONPATH=${PYTHON_BUILD_DIR}:${PYTHON_LIBRARY_DIR};SOAR_BUILD_DIR=${CMAKE_BINARY_DIR}"
+        )
+    endif()
+
+    if(CLI AND Python3_Interpreter_FOUND)
+        add_test(NAME test_agent_state_cli
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/AgentState/test_agent_state_cli.py
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/AgentState
+        )
+
+        set_tests_properties(test_agent_state_cli PROPERTIES
+            ENVIRONMENT "SOAR_BUILD_DIR=${CMAKE_BINARY_DIR};SOAR_SOURCE_DIR=${CMAKE_SOURCE_DIR};SOAR_CLI_BIN=${CMAKE_BINARY_DIR}/SoarCLI/soar"
         )
     endif()
 

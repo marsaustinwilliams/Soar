@@ -15,7 +15,101 @@
 
 #include <iostream>
 #include <string>
+#include <cstdlib>
+#include <cctype>
+#include <cstring>
+#include <execinfo.h>
 bool is_DT_mode_enabled(TraceMode mode);
+
+inline bool symbol_matches_env_identifier(Symbol* sym, const char* env_name)
+{
+    if (!sym || !sym->is_sti())
+    {
+        return false;
+    }
+
+    const char* tracked = std::getenv(env_name);
+    if (!tracked || !tracked[0])
+    {
+        return false;
+    }
+
+    if (std::strlen(tracked) < 2)
+    {
+        return false;
+    }
+
+    const char letter = static_cast<char>(std::toupper(static_cast<unsigned char>(tracked[0])));
+    if (letter != sym->id->name_letter)
+    {
+        return false;
+    }
+
+    char* end_ptr = nullptr;
+    const unsigned long parsed = std::strtoul(tracked + 1, &end_ptr, 10);
+    if ((end_ptr == tracked + 1) || (*end_ptr != '\0'))
+    {
+        return false;
+    }
+
+    return parsed == sym->id->name_number;
+}
+
+inline bool symbol_matches_default_refcnt_trace_ids(Symbol* sym)
+{
+    if (!sym || !sym->is_sti())
+    {
+        return false;
+    }
+
+    return ((sym->id->name_letter == 'S' && sym->id->name_number == 1) ||
+            (sym->id->name_letter == 'J' && sym->id->name_number == 1) ||
+            (sym->id->name_letter == 'I' && sym->id->name_number == 4) ||
+            (sym->id->name_letter == 'O' && sym->id->name_number == 2));
+}
+
+inline bool symbol_matches_refcnt_trace_ids(Symbol* sym)
+{
+    if (symbol_matches_env_identifier(sym, "SOAR_SERIALIZER_TRACK_IDENTIFIER"))
+    {
+        return true;
+    }
+
+    return symbol_matches_default_refcnt_trace_ids(sym);
+}
+
+inline void maybe_emit_refcnt_trace_stack(Symbol* sym, uint64_t next_count)
+{
+    if (!std::getenv("SOAR_DEBUG_REFCNT_TRACE_STACK"))
+    {
+        return;
+    }
+
+    if (!sym || !sym->is_sti())
+    {
+        return;
+    }
+
+    const bool is_s1 = (sym->id->name_letter == 'S' && sym->id->name_number == 1);
+    const bool is_j1 = (sym->id->name_letter == 'J' && sym->id->name_number == 1);
+    const bool is_i4 = (sym->id->name_letter == 'I' && sym->id->name_number == 4);
+    const bool is_o2 = (sym->id->name_letter == 'O' && sym->id->name_number == 2);
+    const bool at_leak_signature = (is_s1 && next_count == 12) ||
+                                   (is_j1 && next_count == 8) ||
+                                   (is_i4 && next_count == 10) ||
+                                   (is_o2 && next_count == 3);
+
+    if (!at_leak_signature)
+    {
+        return;
+    }
+
+    void* frames[16];
+    int frame_count = backtrace(frames, 16);
+    std::cerr << "[REFCNT_TRACE] stack " << sym->id->name_letter << sym->id->name_number
+              << " -> " << next_count << " frames=" << frame_count << std::endl;
+    backtrace_symbols_fd(frames, frame_count, 2);
+}
 
 class EXPORT Symbol_Manager {
 
@@ -29,6 +123,7 @@ class EXPORT Symbol_Manager {
 
         void init_symbol_tables();
         void retesave(FILE* f);
+        void clear_retesave_symbol_indices();
 
         void create_predefined_symbols();
         void create_common_variables_and_numbers();
@@ -87,12 +182,41 @@ class EXPORT Symbol_Manager {
         inline void symbol_add_ref(Symbol* x)
         {
             (x)->reference_count++;
+            if (std::getenv("SOAR_DEBUG_REFCNT_TRACE_IDS") && x->is_sti())
+            {
+                const bool tracked =
+                    ((x->id->name_letter == 'S' && x->id->name_number == 1) ||
+                     (x->id->name_letter == 'J' && x->id->name_number == 1) ||
+                     (x->id->name_letter == 'I' && x->id->name_number == 4) ||
+                     (x->id->name_letter == 'O' && x->id->name_number == 2));
+                if (tracked)
+                {
+                    std::cerr << "[REFCNT_TRACE] add " << x->id->name_letter << x->id->name_number
+                              << " -> " << x->reference_count << std::endl;
+                    maybe_emit_refcnt_trace_stack(x, x->reference_count);
+                }
+            }
         }
 
         //-- symbol_remove_ref -----------------
 
         inline void symbol_remove_ref(Symbol** x)
         {
+            Symbol* sym = *x;
+            if (std::getenv("SOAR_DEBUG_REFCNT_TRACE_IDS") && sym && sym->is_sti())
+            {
+                const bool tracked =
+                    ((sym->id->name_letter == 'S' && sym->id->name_number == 1) ||
+                     (sym->id->name_letter == 'J' && sym->id->name_number == 1) ||
+                     (sym->id->name_letter == 'I' && sym->id->name_number == 4) ||
+                     (sym->id->name_letter == 'O' && sym->id->name_number == 2));
+                if (tracked)
+                {
+                    std::cerr << "[REFCNT_TRACE] remove " << sym->id->name_letter << sym->id->name_number
+                              << " -> " << (sym->reference_count - 1) << std::endl;
+                    maybe_emit_refcnt_trace_stack(sym, sym->reference_count - 1);
+                }
+            }
             (*x)->reference_count--;
             if ((*x)->reference_count == 0)
             {

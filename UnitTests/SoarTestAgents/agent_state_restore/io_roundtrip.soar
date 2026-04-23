@@ -1,0 +1,14 @@
+sp {io*propose*react
+   (state <s> ^superstate nil ^io.input-link <il>)
+   (<il> ^sensor ready)
+-->
+   (<s> ^operator <o> +)
+   (<o> ^name react-io)}
+
+sp {io*apply*react
+   (state <s> ^superstate nil ^operator <o> ^io.output-link <ol>)
+   (<o> ^name react-io)
+-->
+   (<ol> ^status emitted)
+   (<ol> ^command <c>)
+   (<c> ^name ping ^payload ready)}

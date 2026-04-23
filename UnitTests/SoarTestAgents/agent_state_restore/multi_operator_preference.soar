@@ -1,0 +1,30 @@
+sp {propose*alpha*operator
+   (state <s> ^superstate nil)
+-->
+   (<s> ^operator <alpha> +)
+   (<alpha> ^name alpha-op)}
+
+sp {propose*beta*operator
+   (state <s> ^superstate nil)
+-->
+   (<s> ^operator <beta> +)
+   (<beta> ^name beta-op)}
+
+sp {prefer*alpha*over*beta
+   (state <s> ^superstate nil ^operator <alpha> + ^operator <beta> +)
+   (<alpha> ^name alpha-op)
+   (<beta> ^name beta-op)
+-->
+   (<s> ^operator <alpha> > <beta>)}
+
+sp {apply*alpha*operator
+   (state <s> ^superstate nil ^operator <o>)
+   (<o> ^name alpha-op)
+-->
+   (<s> ^winner alpha)}
+
+sp {apply*beta*operator
+   (state <s> ^superstate nil ^operator <o>)
+   (<o> ^name beta-op)
+-->
+   (<s> ^winner beta)}

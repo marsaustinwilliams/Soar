@@ -370,7 +370,7 @@ void reinitialize_soar(agent* thisAgent)
     /* Reinitializing the various halt and stop flags */
     thisAgent->system_halted = false;
     thisAgent->stop_soar = false;           // voigtjr:  this line doesn't exist in other kernel
-    thisAgent->reason_for_stopping = 0;
+    thisAgent->reason_for_stopping = "";
     thisAgent->substate_break_level = 0;
 
     thisAgent->go_number = 1;
@@ -1127,7 +1127,7 @@ void run_forever(agent* thisAgent)
 #endif
 
     thisAgent->stop_soar = false;
-    thisAgent->reason_for_stopping = 0;
+    thisAgent->reason_for_stopping = "";
     while (! thisAgent->stop_soar)
     {
         do_one_top_level_phase(thisAgent);
@@ -1190,7 +1190,7 @@ void run_for_n_elaboration_cycles(agent* thisAgent, int64_t n)
     thisAgent->timers_kernel.start();
 #endif
     thisAgent->stop_soar = false;
-    thisAgent->reason_for_stopping = 0;
+    thisAgent->reason_for_stopping = "";
     e_cycles_at_start = thisAgent->e_cycle_count;
     d_cycles_at_start = thisAgent->d_cycle_count;
     elapsed_cycles = -1;
@@ -1239,7 +1239,7 @@ void run_for_n_modifications_of_output(agent* thisAgent, int64_t n)
     thisAgent->timers_kernel.start();
 #endif
     thisAgent->stop_soar = false;
-    thisAgent->reason_for_stopping = 0;
+    thisAgent->reason_for_stopping = "";
     while (!thisAgent->stop_soar && n)
     {
         was_output_phase = (thisAgent->current_phase == OUTPUT_PHASE);
@@ -1288,7 +1288,7 @@ void run_for_n_decision_cycles(agent* thisAgent, int64_t n)
     thisAgent->timers_kernel.start();
 #endif
     thisAgent->stop_soar = false;
-    thisAgent->reason_for_stopping = 0;
+    thisAgent->reason_for_stopping = "";
     d_cycles_at_start = thisAgent->d_cycle_count;
     /* need next line or runs only the input phase for "d 1" after init-soar */
     if (d_cycles_at_start == 0)
@@ -1339,7 +1339,7 @@ void run_for_n_selections_of_slot(agent* thisAgent, int64_t n, Symbol* attr_of_s
     thisAgent->timers_kernel.start();
 #endif
     thisAgent->stop_soar = false;
-    thisAgent->reason_for_stopping = 0;
+    thisAgent->reason_for_stopping = "";
     count = 0;
     while (!thisAgent->stop_soar && (count < n))
     {
@@ -1380,7 +1380,7 @@ void run_for_n_selections_of_slot_at_level(agent* thisAgent, int64_t n,
     thisAgent->timers_kernel.start();
 #endif
     thisAgent->stop_soar = false;
-    thisAgent->reason_for_stopping = 0;
+    thisAgent->reason_for_stopping = "";
     count = 0;
     while (!thisAgent->stop_soar && (count < n))
     {

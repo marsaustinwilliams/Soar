@@ -31,10 +31,11 @@ class TestCategory
 
         std::vector<TestCategory_test> m_TestCategory_tests;
 
-        const std::string getCategoryName() { return TestHelpers::demangle(typeid(*this).name()); /*m_categoryName;*/ }
+        const std::string getCategoryName() { return m_categoryName.empty() ? TestHelpers::demangle(typeid(*this).name()) : m_categoryName; }
         const std::vector<TestCategory_test> getTests() { return m_TestCategory_tests; }
 
         TestRunner* runner;
+        std::string m_categoryName;
 
         class Test
         {

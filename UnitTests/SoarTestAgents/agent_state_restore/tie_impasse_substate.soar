@@ -1,0 +1,31 @@
+sp {propose*alpha*operator
+   (state <s> ^superstate nil)
+-->
+   (<s> ^operator <alpha> +)
+   (<alpha> ^name alpha-op)}
+
+sp {propose*beta*operator
+   (state <s> ^superstate nil)
+-->
+   (<s> ^operator <beta> +)
+   (<beta> ^name beta-op)}
+
+sp {tie*substate*elaborate
+   (state <s> ^superstate <ss> ^impasse tie)
+-->
+   (<s> ^substate-kind tie)
+   (<ss> ^substate-visible yes)}
+
+sp {tie*substate*propose*resolve
+   (state <s> ^superstate <ss> ^impasse tie)
+-->
+   (<s> ^operator <o> +)
+   (<o> ^name resolve-tie)
+   (<o> ^target-super <ss>)}
+
+sp {tie*substate*apply*resolve
+   (state <s> ^superstate <ss> ^impasse tie ^operator <o>)
+   (<o> ^name resolve-tie)
+-->
+   (<s> ^substate-result resolved)
+   (<ss> ^substate-resolution complete)}

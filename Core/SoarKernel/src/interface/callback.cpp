@@ -255,6 +255,11 @@ void soar_invoke_callbacks(agent* thisAgent,
 {
     cons* c;   /* we need this if we loop over multiple callback functions */
 
+    if (thisAgent->suppress_callbacks_during_load)
+    {
+        return;
+    }
+
     /* if no callback is registered, just return */
     if (!thisAgent->soar_callbacks[callback_type])
     {
@@ -391,6 +396,11 @@ void soar_invoke_first_callback(agent* thisAgent,
                                 soar_call_data call_data)
 {
     cons* head;
+
+    if (thisAgent->suppress_callbacks_during_load)
+    {
+        return;
+    }
 
     /* if no callback is registered, just return */
     head = thisAgent->soar_callbacks[callback_type];

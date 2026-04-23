@@ -198,6 +198,7 @@ void FullTests_Parent::destroySoar()
     // Explicitly destroy our agent as a test, before we delete the kernel itself.
     // (Actually, if this is a remote connection we need to do this or the agent
     //  will remain alive).
+    SoarHelper::normalize_after_snapshot_testing(agent);
     no_agent_assertTrue(m_pKernel->DestroyAgent(agent));
     no_agent_assertTrue(deletionHandlerReceived);
     deletionHandlerReceived = false;
@@ -1008,7 +1009,7 @@ void FullTests_Parent::testSimpleCopy()
 
     // Register for the trace output
     std::stringstream trace ;   // We'll pass this into the handler and build up the output in it
-    /*int callbackp = */agent->RegisterForPrintEvent(sml::smlEVENT_PRINT, Handlers::MyPrintEventHandler, &trace) ;
+    int callbackp = agent->RegisterForPrintEvent(sml::smlEVENT_PRINT, Handlers::MyPrintEventHandler, &trace) ;
 
     // Set to true for more detail on this
     m_pKernel->SetTraceCommunications(false) ;
@@ -1056,6 +1057,8 @@ void FullTests_Parent::testSimpleCopy()
     no_agent_assertTrue(std::string(pNewest->GetValue()) == "ye s");
 
     int changes = agent->GetNumberOutputLinkChanges() ;
+
+    no_agent_assertTrue(agent->UnregisterForPrintEvent(callbackp));
 
     //std::cout << agent->ExecuteCommandLine("print i3 -d 100 -i --tree");
 
@@ -1489,7 +1492,7 @@ void FullTests_Parent::testLearn()
 {
     loadProductions(SoarHelper::GetResource("testLearn.soar"));
     agent->ExecuteCommandLine("chunk unflagged");
-    m_pKernel->RunAllAgentsForever();
+    SoarHelper::run_all_agents_forever(m_pKernel, agent, "FullTests_testLearn_pass_1");
     {
         sml::ClientAnalyzedXML response;
         agent->ExecuteCommandLineXML("stats", &response);
@@ -1499,7 +1502,7 @@ void FullTests_Parent::testLearn()
 
     // learning is off, same behavior expected
     agent->ExecuteCommandLine("init");
-    m_pKernel->RunAllAgentsForever();
+    SoarHelper::run_all_agents_forever(m_pKernel, agent, "FullTests_testLearn_pass_2");
     {
         sml::ClientAnalyzedXML response;
         agent->ExecuteCommandLineXML("stats", &response);
@@ -1510,7 +1513,7 @@ void FullTests_Parent::testLearn()
     // turn learn except on
     agent->ExecuteCommandLine("init");
     agent->ExecuteCommandLine("chunk unflagged");
-    m_pKernel->RunAllAgentsForever();
+    SoarHelper::run_all_agents_forever(m_pKernel, agent, "FullTests_testLearn_pass_3");
     {
         sml::ClientAnalyzedXML response;
         agent->ExecuteCommandLineXML("stats", &response);
@@ -1520,7 +1523,7 @@ void FullTests_Parent::testLearn()
 
     // don't learn is active so same result expected
     agent->ExecuteCommandLine("init");
-    m_pKernel->RunAllAgentsForever();
+    SoarHelper::run_all_agents_forever(m_pKernel, agent, "FullTests_testLearn_pass_4");
     {
         sml::ClientAnalyzedXML response;
         agent->ExecuteCommandLineXML("stats", &response);
@@ -1531,7 +1534,7 @@ void FullTests_Parent::testLearn()
     // get rid of dont learn
     agent->ExecuteCommandLine("init");
     agent->ExecuteCommandLine("excise dont*learn");
-    m_pKernel->RunAllAgentsForever();
+    SoarHelper::run_all_agents_forever(m_pKernel, agent, "FullTests_testLearn_pass_5");
     {
         sml::ClientAnalyzedXML response;
         agent->ExecuteCommandLineXML("stats", &response);
@@ -1541,7 +1544,7 @@ void FullTests_Parent::testLearn()
 
     // expect improvement
     agent->ExecuteCommandLine("init");
-    m_pKernel->RunAllAgentsForever();
+    SoarHelper::run_all_agents_forever(m_pKernel, agent, "FullTests_testLearn_pass_6");
     {
         sml::ClientAnalyzedXML response;
         agent->ExecuteCommandLineXML("stats", &response);
@@ -1553,7 +1556,7 @@ void FullTests_Parent::testLearn()
     agent->ExecuteCommandLine("init");
     agent->ExecuteCommandLine("excise -c");
     agent->ExecuteCommandLine("chunk only");
-    m_pKernel->RunAllAgentsForever();
+    SoarHelper::run_all_agents_forever(m_pKernel, agent, "FullTests_testLearn_pass_7");
     {
         sml::ClientAnalyzedXML response;
         agent->ExecuteCommandLineXML("stats", &response);
@@ -1563,7 +1566,7 @@ void FullTests_Parent::testLearn()
 
     // force learn is active, expect improvement
     agent->ExecuteCommandLine("init");
-    m_pKernel->RunAllAgentsForever();
+    SoarHelper::run_all_agents_forever(m_pKernel, agent, "FullTests_testLearn_pass_8");
     {
         sml::ClientAnalyzedXML response;
         agent->ExecuteCommandLineXML("stats", &response);
@@ -1575,7 +1578,7 @@ void FullTests_Parent::testLearn()
     agent->ExecuteCommandLine("init");
     agent->ExecuteCommandLine("excise -c");
     agent->ExecuteCommandLine("excise force*learn");
-    m_pKernel->RunAllAgentsForever();
+    SoarHelper::run_all_agents_forever(m_pKernel, agent, "FullTests_testLearn_pass_9");
     {
         sml::ClientAnalyzedXML response;
         agent->ExecuteCommandLineXML("stats", &response);
@@ -1585,7 +1588,7 @@ void FullTests_Parent::testLearn()
 
     // expect no improvement
     agent->ExecuteCommandLine("init");
-    m_pKernel->RunAllAgentsForever();
+    SoarHelper::run_all_agents_forever(m_pKernel, agent, "FullTests_testLearn_pass_10");
     {
         sml::ClientAnalyzedXML response;
         agent->ExecuteCommandLineXML("stats", &response);

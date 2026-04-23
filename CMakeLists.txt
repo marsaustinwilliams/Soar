@@ -7,6 +7,8 @@ project(soar
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(SQLite3 REQUIRED)
+find_package(Protobuf REQUIRED)
+protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${CMAKE_CURRENT_SOURCE_DIR}/Core/SoarKernel/proto/agent_state.proto)
 
 # All options should be turned off by default to avoid building unnecessary
 # components in downstream projects relying on cmake's FetchContent module.
@@ -46,6 +48,8 @@ set(SOURCES
   Core/CLI/CommandLineInterface.cxx
 )
 
+list(APPEND SOURCES ${PROTO_SRCS})
+
 file(GLOB_RECURSE HEADERS
   "Core/CLI/src/*.h"
   "Core/ClientSML/src/*.h"
@@ -74,6 +78,8 @@ file(GLOB_RECURSE HEADERS
   "Core/shared/portability_posix.h"
 )
 
+list(APPEND HEADERS ${PROTO_HDRS})
+
 if(NOT SVS)
   message(STATUS "Soar: Disabling SVS")
   add_compile_definitions(NO_SVS)
@@ -86,6 +92,7 @@ target_include_directories(${PROJECT_NAME}_lib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Core/CLI/src>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Core/ClientSML/src>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Core/ConnectionSML/src>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Core/ElementXML/src>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Core/KernelSML/src>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Core/SoarKernel/src/debug_code>
@@ -104,7 +111,7 @@ target_include_directories(${PROJECT_NAME}_lib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Core/shared>
   $<INSTALL_INTERFACE:include/soar>
 )
-target_link_libraries(${PROJECT_NAME}_lib PUBLIC SQLite::SQLite3)
+target_link_libraries(${PROJECT_NAME}_lib PUBLIC SQLite::SQLite3 ${Protobuf_LIBRARIES})
 
 set_target_properties(${PROJECT_NAME}_lib
   PROPERTIES

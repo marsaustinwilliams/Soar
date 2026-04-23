@@ -339,7 +339,11 @@ instantiation_record* Explanation_Memory::get_instantiation(instantiation* pInst
 
 void Explanation_Memory::excise_production_id(uint64_t pId)
 {
-    assert(pId);
+    if (!pId)
+    {
+        return;
+    }
+
     auto iter = production_id_map->find(pId);
     if (iter != production_id_map->end())
     {
@@ -534,7 +538,6 @@ void Explanation_Memory::clear_identity_sets()
 {
     Symbol*             lSym;
 
-    assert(all_identities_in_goal->size() == 0);
     for (auto it1 = all_identities_in_goal->begin(); it1 != all_identities_in_goal->end(); ++it1)
     {
         lSym = it1->first;

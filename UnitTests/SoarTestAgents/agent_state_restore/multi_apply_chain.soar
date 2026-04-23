@@ -1,0 +1,17 @@
+sp {propose*chain*operator
+   (state <s> ^superstate nil)
+-->
+   (<s> ^operator <o> +)
+   (<o> ^name chain-op)}
+
+sp {apply*chain*mark
+   (state <s> ^superstate nil ^operator <o>)
+   (<o> ^name chain-op)
+-->
+   (<s> ^chain-stage primed)}
+
+sp {apply*chain*finish
+   (state <s> ^superstate nil ^operator <o> ^chain-stage primed)
+   (<o> ^name chain-op)
+-->
+   (<s> ^chain-result complete)}
